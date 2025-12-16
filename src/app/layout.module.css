@@ -1,0 +1,19 @@
+.appContainer {
+    display: flex;
+    min-height: 100vh;
+}
+
+.mainContent {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding: var(--space-xl);
+    background: var(--bg-primary);
+    min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+    .mainContent {
+        margin-left: var(--sidebar-collapsed-width);
+        padding: var(--space-md);
+    }
+}

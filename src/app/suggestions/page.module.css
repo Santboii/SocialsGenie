@@ -1,0 +1,379 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    animation: fadeIn 0.5s var(--ease-out-expo);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.title {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.title::before {
+    content: '💡';
+    font-size: 1.5rem;
+}
+
+.generateBtn {
+    padding: var(--space-2) var(--space-4);
+    border: none;
+    border-radius: var(--radius-lg);
+    background: var(--gradient-primary);
+    color: white;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.generateBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Empty State */
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    padding: var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-2xl);
+    text-align: center;
+}
+
+.emptyIcon {
+    font-size: 4rem;
+    opacity: 0.6;
+}
+
+.empty h2 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.empty p {
+    color: var(--text-muted);
+}
+
+.emptyBtn {
+    margin-top: var(--space-2);
+    padding: var(--space-3) var(--space-6);
+    border: none;
+    border-radius: var(--radius-lg);
+    background: var(--gradient-primary);
+    color: white;
+    font-size: var(--text-base);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.emptyBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Suggestions List */
+.suggestionsList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.suggestionCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    transition: all var(--transition-fast);
+}
+
+.suggestionCard:hover {
+    border-color: var(--border-light);
+}
+
+.expanded {
+    box-shadow: var(--shadow-lg);
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.cardHeader:hover {
+    background: var(--bg-tertiary);
+}
+
+.cardInfo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.toneBadge {
+    padding: var(--space-1) var(--space-2);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    font-size: var(--text-xs);
+    text-transform: capitalize;
+}
+
+.topic {
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.cardMeta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.variantCount {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.expandIcon {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.cardBody {
+    padding: 0 var(--space-4) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+    margin-top: 0;
+    padding-top: var(--space-4);
+}
+
+.variant {
+    padding: var(--space-4);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+}
+
+.variantHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+.platformBadge {
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+.charCount {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.variantContent {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: var(--leading-relaxed);
+    white-space: pre-wrap;
+    margin-bottom: var(--space-3);
+}
+
+.approveBtn {
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.approveBtn:hover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+.cardActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.approveAllBtn {
+    padding: var(--space-2) var(--space-4);
+    border: none;
+    border-radius: var(--radius-lg);
+    background: var(--gradient-primary);
+    color: white;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.approveAllBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.rejectBtn {
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.rejectBtn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: var(--accent-red);
+}
+
+/* Variant Actions */
+.variantActions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.scheduleVariantBtn {
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: var(--radius-md);
+    background: rgba(168, 85, 247, 0.1);
+    color: var(--accent-purple);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.scheduleVariantBtn:hover {
+    background: rgba(168, 85, 247, 0.2);
+    border-color: var(--accent-purple);
+}
+
+/* Scheduling Section */
+.scheduleSection {
+    padding: var(--space-4);
+    background: rgba(168, 85, 247, 0.05);
+    border: 1px solid rgba(168, 85, 247, 0.15);
+    border-radius: var(--radius-lg);
+}
+
+.scheduleHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: var(--space-3);
+}
+
+.schedulePicker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: flex-end;
+}
+
+.scheduleInputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.scheduleInputGroup label {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.scheduleInput {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    transition: all var(--transition-fast);
+}
+
+.scheduleInput:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+}
+
+.schedulePreview {
+    padding: var(--space-2) var(--space-3);
+    background: rgba(168, 85, 247, 0.1);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    color: var(--accent-purple);
+    font-weight: 500;
+}
+
+/* Schedule All Button */
+.scheduleAllBtn {
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: var(--radius-lg);
+    background: rgba(168, 85, 247, 0.1);
+    color: var(--accent-purple);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.scheduleAllBtn:hover {
+    background: rgba(168, 85, 247, 0.2);
+    border-color: var(--accent-purple);
+    transform: translateY(-1px);
+}

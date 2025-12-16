@@ -1,0 +1,192 @@
+.backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+}
+
+.popover {
+    position: fixed;
+    z-index: 100;
+    width: 340px;
+    max-width: calc(100vw - 32px);
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    overflow: visible;
+    animation: popoverIn 0.2s var(--ease-out-expo);
+}
+
+/* Arrow pointing left (popover appears to the right of element) */
+.popover::before {
+    content: '';
+    position: absolute;
+    left: -7px;
+    top: 24px;
+    width: 14px;
+    height: 14px;
+    background: var(--bg-card);
+    border-left: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+    transform: rotate(45deg);
+}
+
+@keyframes popoverIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-tertiary);
+}
+
+.status {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+}
+
+.status.draft {
+    background: rgba(107, 114, 128, 0.15);
+    color: var(--text-muted);
+}
+
+.status.scheduled {
+    background: rgba(168, 85, 247, 0.15);
+    color: var(--accent-purple);
+}
+
+.status.published {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-green);
+}
+
+.status.failed {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--accent-red);
+}
+
+.datetime {
+    flex: 1;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.closeBtn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.25rem;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.closeBtn:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+.platforms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.platformBadge {
+    font-size: var(--text-xs);
+    font-weight: 500;
+}
+
+.content {
+    padding: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    line-height: var(--leading-relaxed);
+    max-height: 150px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.actions {
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-tertiary);
+}
+
+.editBtn,
+.publishBtn,
+.deleteBtn {
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.editBtn {
+    flex: 1;
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+}
+
+.editBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.publishBtn {
+    flex: 1;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+.publishBtn:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-light);
+}
+
+.deleteBtn {
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+}
+
+.deleteBtn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: var(--accent-red);
+}
