@@ -21,8 +21,9 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-4);
     max-width: 700px;
+    max-height: calc(100vh - 120px);
 }
 
 .previewSection {
@@ -284,14 +285,12 @@
     backdrop-filter: blur(var(--blur-glass));
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-2xl);
-    padding: var(--space-6);
+    padding: var(--space-5);
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    flex: 1;
-    min-height: 0;
-    position: relative;
     overflow-y: auto;
+    position: relative;
 }
 
 .editorCard::before {
@@ -309,9 +308,9 @@
 }
 
 .composerTextarea {
-    flex: 1;
     width: 100%;
-    min-height: 180px;
+    min-height: 150px;
+    max-height: 250px;
     padding: var(--space-4);
     background: var(--bg-tertiary);
     border: 1px solid var(--border-subtle);
@@ -507,13 +506,9 @@
     justify-content: flex-end;
     align-items: center;
     gap: var(--space-3);
-    padding: var(--space-5) var(--space-6);
-    margin: 0 calc(var(--space-6) * -1) calc(var(--space-6) * -1);
-    background: var(--bg-card);
+    padding: var(--space-4) 0 0 0;
     border-top: 1px solid var(--border-subtle);
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
+    margin-top: auto;
 }
 
 /* Secondary Button - Save Draft */
