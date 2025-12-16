@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlatformId, ToneType, PLATFORMS, getPlatform } from '@/types';
+import { PlatformId, ToneType, PLATFORMS, getPlatform, Platform } from '@/types';
 import { generatePosts, fetchUrlContent } from '@/lib/ai';
 import { createPost } from '@/lib/db';
+import { getSupabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
 type ScheduleMode = 'now' | 'scheduled' | 'batch';
@@ -27,7 +28,30 @@ export default function AIComposePage() {
     const [topic, setTopic] = useState('');
     const [sourceUrl, setSourceUrl] = useState('');
     const [tone, setTone] = useState<ToneType>('casual');
-    const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformId[]>(['twitter']);
+    const [connectedPlatformIds, setConnectedPlatformIds] = useState<PlatformId[]>([]);
+    const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformId[]>([]);
+    const [isLoadingPlatforms, setIsLoadingPlatforms] = useState(true);
+
+    // Fetch connected platforms on mount
+    useEffect(() => {
+        async function loadConnectedPlatforms() {
+            const supabase = getSupabase();
+            const { data } = await supabase
+                .from('connected_accounts')
+                .select('platform');
+
+            const connected = (data || []).map(d => d.platform as PlatformId);
+            setConnectedPlatformIds(connected);
+            setSelectedPlatforms(connected);
+            setIsLoadingPlatforms(false);
+        }
+        loadConnectedPlatforms();
+    }, []);
+
+    // Get connected platforms with full info
+    const connectedPlatforms = useMemo(() => {
+        return PLATFORMS.filter(p => connectedPlatformIds.includes(p.id));
+    }, [connectedPlatformIds]);
 
     // Scheduling state
     const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('scheduled');
@@ -248,19 +272,35 @@ export default function AIComposePage() {
                     {/* Platforms */}
                     <div className={styles.field}>
                         <label className={styles.label}>Platforms</label>
-                        <div className={styles.platformGrid}>
-                            {PLATFORMS.map(platform => (
-                                <button
-                                    key={platform.id}
-                                    className={`${styles.platformBtn} ${selectedPlatforms.includes(platform.id) ? styles.platformBtnActive : ''}`}
-                                    onClick={() => togglePlatform(platform.id)}
-                                    style={{ '--platform-color': platform.color } as React.CSSProperties}
-                                >
-                                    <span className={styles.platformIcon}>{platform.icon}</span>
-                                    <span>{platform.name}</span>
-                                </button>
-                            ))}
-                        </div>
+                        {isLoadingPlatforms ? (
+                            <div className={styles.platformGrid}>
+                                <span className={styles.loadingText}>Loading...</span>
+                            </div>
+                        ) : connectedPlatforms.length === 0 ? (
+                            <div className={styles.noPlatforms}>
+                                <span>🔌</span>
+                                <p>No platforms connected</p>
+                                <a href="/settings" className={styles.connectLink}>Connect in Settings →</a>
+                            </div>
+                        ) : (
+                            <div className={styles.platformGrid}>
+                                {connectedPlatforms.map(platform => (
+                                    <button
+                                        key={platform.id}
+                                        className={`${styles.platformBtn} ${selectedPlatforms.includes(platform.id) ? styles.platformBtnActive : ''}`}
+                                        onClick={() => togglePlatform(platform.id)}
+                                        style={{ '--platform-color': platform.color } as React.CSSProperties}
+                                    >
+                                        <span className={styles.platformIcon}>{platform.icon}</span>
+                                        <span>{platform.name}</span>
+                                    </button>
+                                ))}
+                                <a href="/settings" className={styles.addMoreBtn} title="Connect more platforms">
+                                    <span>+</span>
+                                    <span>Add More</span>
+                                </a>
+                            </div>
+                        )}
                     </div>
 
                     <hr className={styles.divider} />

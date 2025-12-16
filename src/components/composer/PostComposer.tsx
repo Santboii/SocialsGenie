@@ -233,6 +233,10 @@ export default function PostComposer() {
                                 <span>{platform.name}</span>
                             </button>
                         ))}
+                        <a href="/settings" className={styles.addMoreLink} title="Connect more platforms">
+                            <span>+</span>
+                            <span>Add More</span>
+                        </a>
                     </div>
                 )}
 
@@ -387,21 +391,42 @@ export default function PostComposer() {
 
                     <div className={styles.actions}>
                         <button
-                            className="btn btn-secondary"
+                            className={styles.secondaryBtn}
                             onClick={() => handleSubmit('draft')}
                             disabled={isSubmitting || !sharedContent.trim()}
                             type="button"
                         >
-                            💾 Save Draft
+                            <span className={styles.btnIcon}>💾</span>
+                            <span>Save Draft</span>
                         </button>
                         <button
-                            className="btn btn-primary btn-lg"
+                            className={`${styles.primaryBtn} ${hasAnyError() ? styles.errorBtn : ''}`}
                             onClick={() => handleSubmit('scheduled')}
                             disabled={isSubmitting || !sharedContent.trim() || selectedPlatforms.length === 0 || hasAnyError() || (scheduleEnabled && !canSchedule)}
                             type="button"
                             title={hasAnyError() ? 'Fix character limit errors first' : (scheduleEnabled && !canSchedule) ? 'Select date and time' : undefined}
                         >
-                            {isSubmitting ? '⏳ Scheduling...' : hasAnyError() ? '⚠️ Fix Errors' : scheduleEnabled ? '📅 Schedule Post' : '🚀 Post Now'}
+                            {isSubmitting ? (
+                                <>
+                                    <span className={styles.spinner} />
+                                    <span>Publishing...</span>
+                                </>
+                            ) : hasAnyError() ? (
+                                <>
+                                    <span className={styles.btnIcon}>⚠️</span>
+                                    <span>Fix Errors</span>
+                                </>
+                            ) : scheduleEnabled ? (
+                                <>
+                                    <span className={styles.btnIcon}>📅</span>
+                                    <span>Schedule Post</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className={styles.btnIcon}>🚀</span>
+                                    <span>Publish Now</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
