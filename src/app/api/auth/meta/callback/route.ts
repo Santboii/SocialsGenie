@@ -73,10 +73,11 @@ export async function GET(request: NextRequest) {
         }
 
         console.log('Saving connection for user:', user.id);
+        console.log('Pages found:', pages.length);
 
         // Store connection for each platform
         // Facebook connection (for pages)
-        await supabase.from('connected_accounts').upsert({
+        const { error: fbError } = await supabase.from('connected_accounts').upsert({
             user_id: user.id,
             platform: 'facebook',
             access_token: tokens.accessToken,
@@ -84,11 +85,18 @@ export async function GET(request: NextRequest) {
             platform_user_id: tokens.userId,
             platform_username: tokens.userName,
             connected_at: new Date().toISOString(),
-            // Store pages as JSON for now
-            metadata: JSON.stringify({ pages }),
+            // Store pages as JSONB (don't stringify, Supabase handles it)
+            metadata: { pages },
         }, {
             onConflict: 'user_id,platform',
         });
+
+        if (fbError) {
+            console.error('Failed to save Facebook connection:', fbError);
+            throw new Error(`Database error: ${fbError.message}`);
+        }
+
+        console.log('Facebook connection saved successfully');
 
         // If there's an Instagram business account, store that too
         const instagramPage = pages.find(p => p.instagramBusinessAccountId);

@@ -5,9 +5,17 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Post, PostStatus, PlatformId, PLATFORMS } from '@/types';
 import { getPosts, deletePost, publishPost } from '@/lib/db';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import styles from './page.module.css';
 
 type FilterStatus = 'all' | PostStatus;
+
+interface ModalState {
+    isOpen: boolean;
+    type: 'delete' | 'publish' | null;
+    postId: string | null;
+    postContent: string;
+}
 
 function PostsPageContent() {
     const router = useRouter();
@@ -17,6 +25,13 @@ function PostsPageContent() {
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
     const [filterPlatform, setFilterPlatform] = useState<PlatformId | 'all'>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [modal, setModal] = useState<ModalState>({
+        isOpen: false,
+        type: null,
+        postId: null,
+        postContent: '',
+    });
 
     const loadPosts = useCallback(async () => {
         setLoading(true);
@@ -66,27 +81,45 @@ function PostsPageContent() {
         router.push(`/posts/${postId}`);
     };
 
-    const handleDelete = async (postId: string) => {
-        if (confirm('Delete this post?')) {
-            try {
-                await deletePost(postId);
-                await loadPosts();
-            } catch (error) {
-                console.error('Failed to delete post:', error);
-                alert('Failed to delete post');
-            }
-        }
+    const openDeleteModal = (post: Post) => {
+        setModal({
+            isOpen: true,
+            type: 'delete',
+            postId: post.id,
+            postContent: post.content.slice(0, 100) + (post.content.length > 100 ? '...' : ''),
+        });
     };
 
-    const handlePublish = async (postId: string) => {
-        if (confirm('Publish this post now?')) {
-            try {
-                await publishPost(postId);
-                await loadPosts();
-            } catch (error) {
-                console.error('Failed to publish post:', error);
-                alert('Failed to publish post');
+    const openPublishModal = (post: Post) => {
+        setModal({
+            isOpen: true,
+            type: 'publish',
+            postId: post.id,
+            postContent: post.content.slice(0, 100) + (post.content.length > 100 ? '...' : ''),
+        });
+    };
+
+    const closeModal = () => {
+        setModal({ isOpen: false, type: null, postId: null, postContent: '' });
+    };
+
+    const handleConfirm = async () => {
+        if (!modal.postId) return;
+
+        setIsProcessing(true);
+        try {
+            if (modal.type === 'delete') {
+                await deletePost(modal.postId);
+            } else if (modal.type === 'publish') {
+                await publishPost(modal.postId);
             }
+            await loadPosts();
+            closeModal();
+        } catch (error) {
+            console.error(`Failed to ${modal.type} post:`, error);
+            // Keep modal open to show error state could be added here
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -243,17 +276,17 @@ function PostsPageContent() {
                                         >
                                             ✏️ Edit
                                         </button>
-                                        {post.status === 'scheduled' && (
+                                        {(post.status === 'scheduled' || post.status === 'draft') && (
                                             <button
                                                 className={`${styles.actionBtn} ${styles.publishBtn}`}
-                                                onClick={() => handlePublish(post.id)}
+                                                onClick={() => openPublishModal(post)}
                                             >
                                                 🚀 Publish
                                             </button>
                                         )}
                                         <button
                                             className={`${styles.actionBtn} ${styles.deleteBtn}`}
-                                            onClick={() => handleDelete(post.id)}
+                                            onClick={() => openDeleteModal(post)}
                                         >
                                             🗑️
                                         </button>
@@ -264,6 +297,22 @@ function PostsPageContent() {
                     })}
                 </div>
             )}
+
+            {/* Confirmation Modal */}
+            <ConfirmModal
+                isOpen={modal.isOpen}
+                title={modal.type === 'delete' ? 'Delete Post?' : 'Publish Post?'}
+                message={
+                    modal.type === 'delete'
+                        ? <><strong>This action cannot be undone.</strong><br /><br />Post: "{modal.postContent}"</>
+                        : <>Publish this post to Facebook now?<br /><br />Post: "{modal.postContent}"</>
+                }
+                confirmText={modal.type === 'delete' ? 'Delete' : 'Publish Now'}
+                variant={modal.type === 'delete' ? 'danger' : 'success'}
+                onConfirm={handleConfirm}
+                onCancel={closeModal}
+                isLoading={isProcessing}
+            />
         </div>
     );
 }

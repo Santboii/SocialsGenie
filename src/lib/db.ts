@@ -235,6 +235,7 @@ export interface UpdatePostInput {
     content?: string;
     status?: 'draft' | 'scheduled' | 'published' | 'failed';
     scheduledAt?: string | null;
+    publishedAt?: string;
     platforms?: PlatformId[];
 }
 
@@ -312,18 +313,77 @@ export async function deletePost(id: string): Promise<void> {
 }
 
 /**
- * Publish a post (update status to published)
+ * Publish a post to connected platforms and update status
  */
 export async function publishPost(id: string): Promise<Post> {
-    const post = await updatePost(id, { status: 'published' });
+    // Get the post first to check platforms
+    const post = await getPost(id);
+    if (!post) {
+        throw new Error('Post not found');
+    }
 
-    await addActivity({
-        type: 'published',
-        message: `Published post to ${post.platforms.length} platform${post.platforms.length !== 1 ? 's' : ''}`,
-        postId: id,
+    const results: { platform: string; success: boolean; error?: string }[] = [];
+
+    // Publish to Facebook if it's a selected platform
+    if (post.platforms.includes('facebook')) {
+        try {
+            const response = await fetch('/api/publish/facebook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    postId: id,
+                    content: post.content,
+                }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to publish to Facebook');
+            }
+
+            results.push({ platform: 'facebook', success: true });
+        } catch (error) {
+            results.push({
+                platform: 'facebook',
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        }
+    }
+
+    // Check if any platform succeeded
+    const anySuccess = results.some(r => r.success);
+    const allFailed = results.length > 0 && results.every(r => !r.success);
+
+    // Update post status based on results
+    const newStatus = allFailed ? 'failed' : 'published';
+    const updatedPost = await updatePost(id, {
+        status: newStatus,
+        publishedAt: anySuccess ? new Date().toISOString() : undefined,
     });
 
-    return post;
+    // Log activity
+    if (anySuccess) {
+        const successPlatforms = results.filter(r => r.success).map(r => r.platform);
+        await addActivity({
+            type: 'published',
+            message: `Published to ${successPlatforms.join(', ')}`,
+            postId: id,
+        });
+    }
+
+    // If any failed, throw error with details
+    if (results.some(r => !r.success)) {
+        const failedPlatforms = results.filter(r => !r.success);
+        const errorMsg = failedPlatforms.map(f => `${f.platform}: ${f.error}`).join('; ');
+        if (allFailed) {
+            throw new Error(`Failed to publish: ${errorMsg}`);
+        }
+        // Partial success - could show a warning
+        console.warn('Some platforms failed:', errorMsg);
+    }
+
+    return updatedPost;
 }
 
 // ============================================
