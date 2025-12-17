@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlatformId, PLATFORMS, getCharacterLimit, Platform } from '@/types';
 import { createPost } from '@/lib/db';
@@ -36,6 +36,12 @@ export default function PostComposer() {
     const [scheduleEnabled, setScheduleEnabled] = useState(false);
     const [scheduleDate, setScheduleDate] = useState('');
     const [scheduleTime, setScheduleTime] = useState('');
+
+    // Image upload
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedImages, setSelectedImages] = useState<File[]>([]);
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+    const [isDragging, setIsDragging] = useState(false);
 
     // Fetch connected platforms on mount
     useEffect(() => {
@@ -137,6 +143,49 @@ export default function PostComposer() {
         if (activeTab === platformId) {
             setActiveTab('shared');
         }
+    };
+
+    // Image upload handlers
+    const handleFileSelect = (files: FileList | null) => {
+        if (!files) return;
+
+        const imageFiles = Array.from(files).filter(file =>
+            file.type.startsWith('image/')
+        );
+
+        if (imageFiles.length === 0) return;
+
+        // Limit to 4 images total
+        const newImages = [...selectedImages, ...imageFiles].slice(0, 4);
+        setSelectedImages(newImages);
+
+        // Generate previews
+        const newPreviews = newImages.map(file => URL.createObjectURL(file));
+        // Clean up old previews
+        imagePreviews.forEach(url => URL.revokeObjectURL(url));
+        setImagePreviews(newPreviews);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        handleFileSelect(e.dataTransfer.files);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const removeImage = (index: number) => {
+        URL.revokeObjectURL(imagePreviews[index]);
+        setSelectedImages(prev => prev.filter((_, i) => i !== index));
+        setImagePreviews(prev => prev.filter((_, i) => i !== index));
     };
 
     const getCharStatus = (content: string, platformId: PlatformId): 'ok' | 'warning' | 'error' => {
@@ -302,9 +351,53 @@ export default function PostComposer() {
                         </div>
                     )}
 
-                    <div className={styles.mediaDropzone}>
-                        <span>📷</span>
-                        <span className="text-sm">Click or drag images here</span>
+                    {/* Image Upload Dropzone */}
+                    <div
+                        className={`${styles.mediaDropzone} ${isDragging ? styles.dragging : ''} ${selectedImages.length > 0 ? styles.hasImages : ''}`}
+                        onClick={() => fileInputRef.current?.click()}
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                    >
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => handleFileSelect(e.target.files)}
+                            style={{ display: 'none' }}
+                        />
+
+                        {selectedImages.length === 0 ? (
+                            <>
+                                <span className={styles.dropzoneIcon}>📷</span>
+                                <span className={styles.dropzoneText}>Click or drag images here</span>
+                                <span className={styles.dropzoneHint}>Up to 4 images</span>
+                            </>
+                        ) : (
+                            <div className={styles.imagePreviewGrid}>
+                                {imagePreviews.map((preview, index) => (
+                                    <div key={index} className={styles.imagePreviewItem}>
+                                        <img src={preview} alt={`Preview ${index + 1}`} />
+                                        <button
+                                            type="button"
+                                            className={styles.removeImageBtn}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeImage(index);
+                                            }}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+                                {selectedImages.length < 4 && (
+                                    <div className={styles.addMoreImages}>
+                                        <span>+</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Schedule Section */}
@@ -443,6 +536,19 @@ export default function PostComposer() {
                                 <div className={styles.previewContent}>
                                     {content || <span className={styles.placeholder}>Your post will appear here...</span>}
                                 </div>
+
+                                {imagePreviews.length > 0 && (
+                                    <div className={styles.previewImages}>
+                                        {imagePreviews.map((preview, index) => (
+                                            <img
+                                                key={index}
+                                                src={preview}
+                                                alt={`Attachment ${index + 1}`}
+                                                className={styles.previewImageThumb}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
 
                                 {limit && (
                                     <div className={`${styles.charRemaining} ${styles[charStatus]}`}>

@@ -13,16 +13,16 @@ const FACEBOOK_OAUTH_URL = 'https://www.facebook.com/v21.0/dialog/oauth';
 const FACEBOOK_TOKEN_URL = `${GRAPH_API_BASE}/oauth/access_token`;
 
 // Start with basic scopes - add more after App Review approval
-// These work in development mode without approval:
+// Instagram scopes require enabling Instagram API in the dashboard first
 const REQUIRED_SCOPES = [
     'public_profile',
     'pages_show_list',
     'pages_read_engagement',
     'pages_manage_posts',
-    // Instagram scopes
-    'instagram_basic',
-    'instagram_content_publish',
-    'business_management',
+    // TODO: Add these after enabling Instagram API in Meta Dashboard:
+    // 'instagram_basic',
+    // 'instagram_content_publish',
+    // 'business_management',
 ].join(',');
 
 export interface MetaTokens {
