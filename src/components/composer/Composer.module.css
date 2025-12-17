@@ -120,6 +120,32 @@
     background: rgba(168, 85, 247, 0.2);
 }
 
+.platformBtn.inactive {
+    background: var(--bg-tertiary);
+    border: 1px dashed var(--border-light);
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.platformBtn.inactive:hover {
+    opacity: 1;
+    background: var(--bg-elevated);
+    border-style: solid;
+}
+
+.errorIndicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: var(--accent-red);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 50%;
+}
+
 /* Content Tabs for per-platform editing */
 .contentTabs {
     display: flex;
@@ -285,10 +311,10 @@
     backdrop-filter: blur(var(--blur-glass));
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-2xl);
-    padding: var(--space-5);
+    padding: var(--space-4);
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-3);
     overflow-y: auto;
     position: relative;
 }

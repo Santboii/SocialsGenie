@@ -209,7 +209,7 @@ export default function PostComposer() {
                     <h2>Create Post</h2>
                 </div>
 
-                {/* Platform Selection */}
+                {/* Platform Selection - Unified toggle with active/inactive states */}
                 {isLoading ? (
                     <div className={styles.platformToggle}>
                         <span className={styles.loadingText}>Loading connected platforms...</span>
@@ -222,58 +222,29 @@ export default function PostComposer() {
                     </div>
                 ) : (
                     <div className={styles.platformToggle}>
-                        {connectedPlatforms.map(platform => (
-                            <button
-                                key={platform.id}
-                                className={`${styles.platformBtn} ${selectedPlatforms.includes(platform.id) ? styles.active : ''}`}
-                                onClick={() => togglePlatform(platform.id)}
-                                type="button"
-                            >
-                                <span>{platform.icon}</span>
-                                <span>{platform.name}</span>
-                            </button>
-                        ))}
+                        {connectedPlatforms.map(platform => {
+                            const isSelected = selectedPlatforms.includes(platform.id);
+                            const content = getContentForPlatform(platform.id);
+                            const status = getCharStatus(content, platform.id);
+
+                            return (
+                                <button
+                                    key={platform.id}
+                                    className={`${styles.platformBtn} ${isSelected ? styles.active : styles.inactive}`}
+                                    onClick={() => togglePlatform(platform.id)}
+                                    type="button"
+                                    title={isSelected ? 'Click to deselect' : 'Click to select'}
+                                >
+                                    <span style={{ color: isSelected ? platform.color : undefined }}>{platform.icon}</span>
+                                    <span>{platform.name}</span>
+                                    {status === 'error' && isSelected && <span className={styles.errorIndicator}>!</span>}
+                                </button>
+                            );
+                        })}
                         <a href="/settings" className={styles.addMoreLink} title="Connect more platforms">
                             <span>+</span>
                             <span>Add More</span>
                         </a>
-                    </div>
-                )}
-
-                {/* Content Tabs - Only show if platforms are connected */}
-                {connectedPlatforms.length > 0 && (
-                    <div className={styles.contentTabs}>
-                        {showSharedTab && (
-                            <button
-                                className={`${styles.contentTab} ${activeTab === 'shared' ? styles.activeTab : ''}`}
-                                onClick={() => setActiveTab('shared')}
-                                type="button"
-                            >
-                                <span>📝</span>
-                                <span>Shared Content</span>
-                            </button>
-                        )}
-
-                        {selectedPlatforms.map(platformId => {
-                            const platform = PLATFORMS.find(p => p.id === platformId)!;
-                            const content = getContentForPlatform(platformId);
-                            const status = getCharStatus(content, platformId);
-                            const isCustom = hasCustomContent(platformId);
-
-                            return (
-                                <button
-                                    key={platformId}
-                                    className={`${styles.contentTab} ${activeTab === platformId ? styles.activeTab : ''} ${status === 'error' ? styles.errorTab : ''}`}
-                                    onClick={() => initializePlatformContent(platformId)}
-                                    type="button"
-                                >
-                                    <span style={{ color: platform.color }}>{platform.icon}</span>
-                                    <span>{platform.name}</span>
-                                    {isCustom && <span className={styles.customBadge}>✎</span>}
-                                    {status === 'error' && <span className={styles.errorIndicator}>!</span>}
-                                </button>
-                            );
-                        })}
                     </div>
                 )}
                 <div className={styles.editorCard}>
