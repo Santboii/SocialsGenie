@@ -19,6 +19,10 @@ const REQUIRED_SCOPES = [
     'pages_show_list',
     'pages_read_engagement',
     'pages_manage_posts',
+    // Instagram scopes
+    'instagram_basic',
+    'instagram_content_publish',
+    'business_management',
 ].join(',');
 
 export interface MetaTokens {
