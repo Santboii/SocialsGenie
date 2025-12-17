@@ -351,15 +351,6 @@ export default function PostComposer() {
                         )}
                     </div>
 
-                    <div className={styles.toolbar}>
-                        <div className={styles.toolbarActions}>
-                            <button className={styles.toolbarBtn} type="button" title="Emoji">😊</button>
-                            <button className={styles.toolbarBtn} type="button" title="Location">📍</button>
-                            <button className={styles.toolbarBtn} type="button" title="Hashtags">#️⃣</button>
-                            <button className={styles.toolbarBtn} type="button" title="Mention">@</button>
-                        </div>
-                    </div>
-
                     <div className={styles.actions}>
                         <button
                             className={styles.secondaryBtn}
