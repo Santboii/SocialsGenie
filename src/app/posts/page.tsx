@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
+import { useState, useMemo, Suspense, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Post, PostStatus, PlatformId, PLATFORMS } from '@/types';
-import { getPosts, deletePost, publishPost } from '@/lib/db';
+import { deletePost, publishPost } from '@/lib/db';
+import { usePosts, useInvalidatePosts } from '@/hooks/useQueries';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import styles from './page.module.css';
 
@@ -20,9 +21,18 @@ interface ModalState {
 function PostsPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+
+    // Use cached query for posts
+    const { data: posts = [], isLoading: loading } = usePosts();
+    const invalidatePosts = useInvalidatePosts();
+
+    const [filterStatus, setFilterStatus] = useState<FilterStatus>(() => {
+        const statusParam = searchParams.get('status');
+        if (statusParam && ['draft', 'scheduled', 'published', 'failed'].includes(statusParam)) {
+            return statusParam as FilterStatus;
+        }
+        return 'all';
+    });
     const [filterPlatform, setFilterPlatform] = useState<PlatformId | 'all'>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
@@ -32,22 +42,6 @@ function PostsPageContent() {
         postId: null,
         postContent: '',
     });
-
-    const loadPosts = useCallback(async () => {
-        setLoading(true);
-        const data = await getPosts();
-        setPosts(data);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        // Read filter from URL params
-        const statusParam = searchParams.get('status');
-        if (statusParam && ['draft', 'scheduled', 'published', 'failed'].includes(statusParam)) {
-            setFilterStatus(statusParam as FilterStatus);
-        }
-        loadPosts();
-    }, [searchParams, loadPosts]);
 
     const filteredPosts = useMemo(() => {
         return posts.filter(post => {
@@ -113,7 +107,7 @@ function PostsPageContent() {
             } else if (modal.type === 'publish') {
                 await publishPost(modal.postId);
             }
-            await loadPosts();
+            invalidatePosts(); // Refresh cache
             closeModal();
         } catch (error) {
             console.error(`Failed to ${modal.type} post:`, error);
@@ -264,7 +258,7 @@ function PostsPageContent() {
 
                                 <div className={styles.postFooter}>
                                     <div className={styles.platforms}>
-                                        {post.platforms.map(platformId => {
+                                        {(post.platforms || []).map(platformId => {
                                             const platform = PLATFORMS.find(p => p.id === platformId);
                                             return (
                                                 <span

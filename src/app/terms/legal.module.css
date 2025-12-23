@@ -1,5 +1,7 @@
 .legalContainer {
     max-width: 800px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6);
     animation: fadeIn 0.5s var(--ease-out-expo);
 }
 
@@ -29,11 +31,13 @@
 .lastUpdated {
     color: var(--text-muted);
     font-size: var(--text-sm);
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-10);
+    padding-bottom: var(--space-6);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .section {
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-10);
 }
 
 .section h2 {
@@ -45,26 +49,49 @@
 
 .section p {
     color: var(--text-secondary);
-    line-height: 1.7;
-    margin-bottom: var(--space-3);
+    line-height: 1.8;
+    margin-bottom: var(--space-4);
 }
 
 .section ul {
     color: var(--text-secondary);
-    line-height: 1.7;
+    line-height: 1.8;
     margin-left: var(--space-6);
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-4);
+    list-style-type: disc;
 }
 
 .section li {
-    margin-bottom: var(--space-2);
+    margin-bottom: var(--space-3);
+    padding-left: var(--space-2);
+}
+
+.section li strong {
+    color: var(--text-primary);
 }
 
 .section a {
     color: var(--accent-purple);
     text-decoration: none;
+    font-weight: 500;
 }
 
 .section a:hover {
     text-decoration: underline;
+}
+
+/* Back link at top */
+.backLink {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-6);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.backLink:hover {
+    color: var(--accent-purple);
 }

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Post, PLATFORMS } from '@/types';
-import { getPosts } from '@/lib/db';
+import { usePosts, useInvalidatePosts } from '@/hooks/useQueries';
 import PostPopover from '@/components/calendar/PostPopover';
 import styles from './page.module.css';
 
@@ -11,23 +11,15 @@ type ViewType = 'month' | 'week' | 'day';
 
 export default function CalendarPage() {
     const router = useRouter();
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [loading, setLoading] = useState(true);
+
+    // Use cached query for posts
+    const { data: posts = [], isLoading: loading } = usePosts();
+    const invalidatePosts = useInvalidatePosts();
+
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState<ViewType>('month');
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
     const [popoverPosition, setPopoverPosition] = useState({ x: 0, y: 0 });
-
-    const loadPosts = useCallback(async () => {
-        setLoading(true);
-        const data = await getPosts();
-        setPosts(data);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        loadPosts();
-    }, [loadPosts]);
 
     const getDaysInMonth = (date: Date) => {
         const year = date.getFullYear();
@@ -148,7 +140,7 @@ export default function CalendarPage() {
     };
 
     const handlePostUpdated = () => {
-        loadPosts();
+        invalidatePosts(); // Refresh cache
         setSelectedPost(null);
     };
 

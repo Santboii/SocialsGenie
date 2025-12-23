@@ -54,9 +54,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const appSecret = process.env.INSTAGRAM_APP_SECRET;
+        // Try both META_APP_SECRET and INSTAGRAM_APP_SECRET for compatibility
+        const appSecret = process.env.META_APP_SECRET || process.env.INSTAGRAM_APP_SECRET;
         if (!appSecret) {
-            console.error('INSTAGRAM_APP_SECRET not configured');
+            console.error('META_APP_SECRET or INSTAGRAM_APP_SECRET not configured');
             return NextResponse.json(
                 { error: 'Server configuration error' },
                 { status: 500 }
@@ -110,9 +111,9 @@ export async function POST(request: NextRequest) {
                 .delete()
                 .eq('user_id', userId);
 
-            // 4. Delete brand settings if exists
+            // 4. Delete brand profiles if exists
             await supabaseAdmin
-                .from('brand_settings')
+                .from('brand_profiles')
                 .delete()
                 .eq('user_id', userId);
 

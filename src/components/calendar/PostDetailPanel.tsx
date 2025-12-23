@@ -127,7 +127,7 @@ export default function PostDetailPanel({ post, onClose, onEdit, onPostUpdated }
                     <div className={styles.platformsSection}>
                         <h3 className={styles.sectionLabel}>Platforms</h3>
                         <div className={styles.platformList}>
-                            {post.platforms.map(platformId => {
+                            {(post.platforms || []).map(platformId => {
                                 const platform = getPlatformInfo(platformId);
                                 if (!platform) return null;
                                 return (
@@ -156,7 +156,7 @@ export default function PostDetailPanel({ post, onClose, onEdit, onPostUpdated }
 
                     {/* Character Counts */}
                     <div className={styles.characterCounts}>
-                        {post.platforms.map(platformId => {
+                        {(post.platforms || []).map(platformId => {
                             const platform = getPlatformInfo(platformId);
                             if (!platform?.maxLength) return null;
                             const count = post.content.length;

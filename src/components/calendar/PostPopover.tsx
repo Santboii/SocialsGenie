@@ -116,7 +116,7 @@ export default function PostPopover({ post, position, onClose, onEdit, onPostUpd
 
                 {/* Platforms */}
                 <div className={styles.platforms}>
-                    {post.platforms.map(platformId => {
+                    {(post.platforms || []).map(platformId => {
                         const platform = getPlatformInfo(platformId);
                         if (!platform) return null;
                         return (

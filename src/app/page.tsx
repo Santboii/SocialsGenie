@@ -1,30 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getDashboardStats, getActivities, type DashboardStats } from '@/lib/db';
-import type { Activity } from '@/types';
+import { useDashboardStats, useActivities } from '@/hooks/useQueries';
 import styles from './page.module.css';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: activities = [], isLoading: activitiesLoading } = useActivities();
 
-  useEffect(() => {
-    async function loadData() {
-      const [statsData, activitiesData] = await Promise.all([
-        getDashboardStats(),
-        getActivities(),
-      ]);
-      setStats(statsData);
-      setActivities(activitiesData);
-      setMounted(true);
-    }
-    loadData();
-  }, []);
+  const isLoading = statsLoading || activitiesLoading;
 
-  if (!mounted) {
+  if (isLoading) {
     return (
       <div className={styles.dashboard}>
         <div className={styles.header}>
@@ -44,10 +30,10 @@ export default function Dashboard() {
 
   const statCards = [
     {
-      label: 'Posts This Week',
-      value: stats?.postsThisWeek || 0,
+      label: 'Total Posts',
+      value: stats?.totalPosts || 0,
       icon: '📊',
-      trend: '+12%',
+      trend: 'All time',
       trendUp: true,
       href: '/posts'
     },
@@ -55,21 +41,21 @@ export default function Dashboard() {
       label: 'Scheduled',
       value: stats?.scheduledPosts || 0,
       icon: '📅',
-      trend: 'Next: 2h',
+      trend: 'Upcoming',
       trendUp: true,
       href: '/posts?status=scheduled'
     },
     {
       label: 'Published',
-      value: stats?.publishedThisMonth || 0,
+      value: stats?.publishedPosts || 0,
       icon: '✅',
-      trend: '+5%',
+      trend: 'Live',
       trendUp: true,
       href: '/posts?status=published'
     },
     {
       label: 'Drafts',
-      value: stats?.drafts || 0,
+      value: stats?.draftPosts || 0,
       icon: '📝',
       trend: 'Active',
       trendUp: false,
@@ -94,7 +80,7 @@ export default function Dashboard() {
           <h2>Let AI create your next viral post</h2>
           <p>Generate platform-optimized content in seconds. Just describe your topic.</p>
         </div>
-        <Link href="/ai-compose" className={styles.createButton}>
+        <Link href="/compose" className={styles.createButton}>
           <span>✨ Create with AI</span>
         </Link>
       </div>
@@ -130,7 +116,7 @@ export default function Dashboard() {
             {activities.length === 0 ? (
               <div className={styles.emptyState}>No recent activity</div>
             ) : (
-              activities.slice(0, 5).map((activity, index) => (
+              activities.slice(0, 5).map((activity: any, index: number) => (
                 <div key={activity.id} className={`${styles.activityItem} animate-slideIn`} style={{ animationDelay: `${index * 100}ms` }}>
                   <div className={styles.activityIcon} style={{
                     background: activity.type === 'published' ? 'rgba(16, 185, 129, 0.2)' :
@@ -143,9 +129,9 @@ export default function Dashboard() {
                     {activity.type === 'published' ? '✅' : activity.type === 'scheduled' ? '📅' : '📝'}
                   </div>
                   <div className={styles.activityContent}>
-                    <p className={styles.activityMessage}>{activity.message}</p>
+                    <p className={styles.activityMessage}>{activity.description || activity.message}</p>
                     <span className={styles.activityTime}>
-                      {new Date(activity.timestamp).toLocaleString()}
+                      {new Date(activity.created_at || activity.timestamp).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -157,3 +143,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

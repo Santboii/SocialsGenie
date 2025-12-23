@@ -1,22 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { PLATFORMS, PlatformId } from '@/types';
 import { getSupabase } from '@/lib/supabase';
+import { useConnections, useInvalidateConnections } from '@/hooks/useQueries';
 import styles from './page.module.css';
-
-interface ConnectedAccount {
-    platform: PlatformId;
-    platform_username: string | null;
-    connected_at: string;
-}
 
 export default function SettingsPage() {
     const searchParams = useSearchParams();
-    const [connections, setConnections] = useState<ConnectedAccount[]>([]);
-    const [loading, setLoading] = useState(true);
+
+    // Use cached query for connections
+    const { data: connections = [], isLoading: loading } = useConnections();
+    const invalidateConnections = useInvalidateConnections();
+
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     // Check for OAuth callback messages
@@ -26,25 +24,12 @@ export default function SettingsPage() {
 
         if (success) {
             setMessage({ type: 'success', text: success });
+            // Invalidate connections cache after OAuth success
+            invalidateConnections();
         } else if (error) {
             setMessage({ type: 'error', text: error });
         }
-    }, [searchParams]);
-
-    const loadConnections = useCallback(async () => {
-        setLoading(true);
-        const supabase = getSupabase();
-        const { data } = await supabase
-            .from('connected_accounts')
-            .select('platform, platform_username, connected_at');
-
-        setConnections((data || []) as ConnectedAccount[]);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        loadConnections();
-    }, [loadConnections]);
+    }, [searchParams, invalidateConnections]);
 
     const getConnection = (platformId: PlatformId) => {
         return connections.find(c => c.platform === platformId);
@@ -64,8 +49,44 @@ export default function SettingsPage() {
             .delete()
             .eq('platform', platformId);
 
-        await loadConnections();
+        invalidateConnections(); // Refresh cache
         setMessage({ type: 'success', text: `Disconnected from ${platformId}` });
+    };
+
+    // Delete account state and handler
+    const [deleting, setDeleting] = useState(false);
+
+    const handleDeleteAccount = async () => {
+        const confirmText = prompt(
+            'This will permanently delete your account and all data. Type "DELETE" to confirm:'
+        );
+
+        if (confirmText !== 'DELETE') {
+            if (confirmText !== null) {
+                setMessage({ type: 'error', text: 'Account deletion cancelled. You must type "DELETE" to confirm.' });
+            }
+            return;
+        }
+
+        setDeleting(true);
+        try {
+            const response = await fetch('/api/account/delete', {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to delete account');
+            }
+
+            // Sign out and redirect to landing
+            const supabase = getSupabase();
+            await supabase.auth.signOut();
+            window.location.href = '/landing?deleted=true';
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.message || 'Failed to delete account' });
+            setDeleting(false);
+        }
     };
 
     // Platforms with real OAuth support
@@ -212,6 +233,32 @@ export default function SettingsPage() {
                         <span>☀️</span>
                         <span>Light (Soon)</span>
                     </div>
+                </div>
+            </section>
+
+            {/* Danger Zone */}
+            <section className={`${styles.section} ${styles.dangerSection}`}>
+                <h2 className={styles.sectionTitle}>
+                    <span>⚠️</span>
+                    <span>Danger Zone</span>
+                </h2>
+
+                <div className={styles.dangerContent}>
+                    <div className={styles.dangerInfo}>
+                        <h3>Delete Account</h3>
+                        <p>
+                            Permanently delete your account and all associated data including posts,
+                            connected accounts, and brand settings. This action cannot be undone.
+                        </p>
+                    </div>
+                    <button
+                        className={styles.deleteBtn}
+                        onClick={handleDeleteAccount}
+                        disabled={deleting}
+                        type="button"
+                    >
+                        {deleting ? 'Deleting...' : 'Delete My Account'}
+                    </button>
                 </div>
             </section>
         </div>

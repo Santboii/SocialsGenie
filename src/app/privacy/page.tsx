@@ -4,7 +4,7 @@ export default function PrivacyPage() {
     return (
         <div className={styles.legalContainer}>
             <h1 className={styles.title}>Privacy Policy</h1>
-            <p className={styles.lastUpdated}>Last updated: December 2024</p>
+            <p className={styles.lastUpdated}>Last updated: December 2025</p>
 
             <section className={styles.section}>
                 <h2>1. Information We Collect</h2>
