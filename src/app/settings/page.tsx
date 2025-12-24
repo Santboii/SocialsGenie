@@ -6,7 +6,43 @@ import { useSearchParams } from 'next/navigation';
 import { PLATFORMS, PlatformId } from '@/types';
 import { getSupabase } from '@/lib/supabase';
 import { useConnections, useInvalidateConnections } from '@/hooks/useQueries';
+import { getPlatformIcon } from '@/components/ui/PlatformIcons';
+import { useTheme } from '@/providers/ThemeProvider';
 import styles from './page.module.css';
+
+// Theme toggle component
+function ThemeToggle() {
+    const { theme, setTheme } = useTheme();
+
+    return (
+        <div className={styles.themeSelector}>
+            <button
+                className={`${styles.themeOption} ${theme === 'light' ? styles.active : ''}`}
+                onClick={() => setTheme('light')}
+                type="button"
+            >
+                <span>☀️</span>
+                <span>Light</span>
+            </button>
+            <button
+                className={`${styles.themeOption} ${theme === 'dark' ? styles.active : ''}`}
+                onClick={() => setTheme('dark')}
+                type="button"
+            >
+                <span>🌙</span>
+                <span>Dark</span>
+            </button>
+            <button
+                className={`${styles.themeOption} ${theme === 'system' ? styles.active : ''}`}
+                onClick={() => setTheme('system')}
+                type="button"
+            >
+                <span>💻</span>
+                <span>System</span>
+            </button>
+        </div>
+    );
+}
 
 export default function SettingsPage() {
     const searchParams = useSearchParams();
@@ -26,10 +62,15 @@ export default function SettingsPage() {
             setMessage({ type: 'success', text: success });
             // Invalidate connections cache after OAuth success
             invalidateConnections();
+            // Clear URL params to prevent re-triggering
+            window.history.replaceState({}, '', '/settings');
         } else if (error) {
             setMessage({ type: 'error', text: error });
+            // Clear URL params
+            window.history.replaceState({}, '', '/settings');
         }
-    }, [searchParams, invalidateConnections]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams]);
 
     const getConnection = (platformId: PlatformId) => {
         return connections.find(c => c.platform === platformId);
@@ -38,6 +79,11 @@ export default function SettingsPage() {
     const handleConnectMeta = () => {
         // Redirect to Meta OAuth endpoint
         window.location.href = '/api/auth/meta';
+    };
+
+    const handleConnectX = () => {
+        // Redirect to X OAuth endpoint
+        window.location.href = '/api/auth/x';
     };
 
     const handleDisconnect = async (platformId: PlatformId) => {
@@ -91,7 +137,8 @@ export default function SettingsPage() {
 
     // Platforms with real OAuth support
     const metaPlatforms: PlatformId[] = ['facebook', 'instagram'];
-    const otherPlatforms: PlatformId[] = ['twitter', 'linkedin', 'threads'];
+    const xPlatform: PlatformId = 'twitter';
+    const comingSoonPlatforms: PlatformId[] = ['linkedin', 'threads'];
 
     return (
         <div className={styles.settingsContainer}>
@@ -162,7 +209,7 @@ export default function SettingsPage() {
                                 <div key={platformId} className={styles.platformRow}>
                                     <div className={styles.platformInfo}>
                                         <div className={styles.platformIcon} style={{ color: platform.color }}>
-                                            {platform.icon}
+                                            {getPlatformIcon(platformId, 22)}
                                         </div>
                                         <div>
                                             <div className={styles.platformName}>{platform.name}</div>
@@ -189,6 +236,58 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
+                {/* X (Twitter) Platform */}
+                <div className={styles.platformGroup}>
+                    <div className={styles.groupHeader}>
+                        <span>𝕏 X (Twitter)</span>
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleConnectX}
+                            type="button"
+                        >
+                            {getConnection(xPlatform)
+                                ? '🔄 Reconnect'
+                                : '🔗 Connect X'}
+                        </button>
+                    </div>
+
+                    <div className={styles.platformGrid}>
+                        {(() => {
+                            const platform = PLATFORMS.find(p => p.id === xPlatform);
+                            const connection = getConnection(xPlatform);
+                            if (!platform) return null;
+
+                            return (
+                                <div className={styles.platformRow}>
+                                    <div className={styles.platformInfo}>
+                                        <div className={styles.platformIcon} style={{ color: platform.color }}>
+                                            {getPlatformIcon(xPlatform, 22)}
+                                        </div>
+                                        <div>
+                                            <div className={styles.platformName}>{platform.name}</div>
+                                            <div className={styles.platformStatus}>
+                                                {connection
+                                                    ? `✓ Connected as @${connection.platform_username}`
+                                                    : 'Not connected'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {connection && (
+                                        <button
+                                            className={styles.disconnectBtn}
+                                            onClick={() => handleDisconnect(xPlatform)}
+                                            type="button"
+                                        >
+                                            Disconnect
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </div>
+
                 {/* Other Platforms (Coming Soon) */}
                 <div className={styles.platformGroup}>
                     <div className={styles.groupHeader}>
@@ -196,7 +295,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div className={styles.platformGrid}>
-                        {otherPlatforms.map(platformId => {
+                        {comingSoonPlatforms.map(platformId => {
                             const platform = PLATFORMS.find(p => p.id === platformId);
                             if (!platform) return null;
 
@@ -204,7 +303,7 @@ export default function SettingsPage() {
                                 <div key={platformId} className={`${styles.platformRow} ${styles.disabled}`}>
                                     <div className={styles.platformInfo}>
                                         <div className={styles.platformIcon} style={{ color: platform.color, opacity: 0.5 }}>
-                                            {platform.icon}
+                                            {getPlatformIcon(platformId, 22)}
                                         </div>
                                         <div>
                                             <div className={styles.platformName}>{platform.name}</div>
@@ -224,16 +323,7 @@ export default function SettingsPage() {
                     <span>Appearance</span>
                 </h2>
 
-                <div className={styles.themeSelector}>
-                    <div className={`${styles.themeOption} ${styles.active}`}>
-                        <span>🌑</span>
-                        <span>Dark</span>
-                    </div>
-                    <div className={`${styles.themeOption} ${styles.disabledOption}`}>
-                        <span>☀️</span>
-                        <span>Light (Soon)</span>
-                    </div>
-                </div>
+                <ThemeToggle />
             </section>
 
             {/* Danger Zone */}

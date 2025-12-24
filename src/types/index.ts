@@ -86,9 +86,9 @@ export interface Suggestion {
 export const PLATFORMS: Platform[] = [
   {
     id: 'twitter',
-    name: 'X (Twitter)',
+    name: 'X',
     icon: '𝕏',
-    color: '#1da1f2',
+    color: '#000000',
     maxLength: 280,
     maxMedia: 4,
     supportsImages: true,
@@ -98,8 +98,8 @@ export const PLATFORMS: Platform[] = [
   {
     id: 'instagram',
     name: 'Instagram',
-    icon: '📷',
-    color: '#e4405f',
+    icon: '◐',
+    color: '#E1306C',
     maxMedia: 10,
     supportsImages: true,
     supportsVideo: true,

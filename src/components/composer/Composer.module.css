@@ -1203,6 +1203,24 @@
     background: rgba(239, 68, 68, 0.1);
 }
 
+/* X Media Warning */
+.xMediaWarning {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    border-radius: var(--radius-lg);
+    color: var(--accent-yellow);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+}
+
+.xMediaWarning span:first-child {
+    flex-shrink: 0;
+}
+
 .mediaDropzone {
     position: relative;
     /* Enables absolute positioning for floating AI button */

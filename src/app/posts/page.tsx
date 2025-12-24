@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Post, PostStatus, PlatformId, PLATFORMS } from '@/types';
 import { deletePost, publishPost } from '@/lib/db';
 import { usePosts, useInvalidatePosts } from '@/hooks/useQueries';
+import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import styles from './page.module.css';
 
@@ -127,8 +128,10 @@ function PostsPageContent() {
         return config[status];
     };
 
-    const formatDate = (dateString: string) => {
+    const formatDate = (dateString: string | null | undefined) => {
+        if (!dateString) return 'Unknown';
         const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Unknown';
         return date.toLocaleDateString('en-US', {
             weekday: 'short',
             month: 'short',
@@ -267,7 +270,7 @@ function PostsPageContent() {
                                                     style={{ color: platform?.color }}
                                                     title={platform?.name}
                                                 >
-                                                    {platform?.icon}
+                                                    {getPlatformIcon(platformId, 16)}
                                                 </span>
                                             );
                                         })}

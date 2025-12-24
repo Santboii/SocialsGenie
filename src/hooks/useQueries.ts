@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabase } from '@/lib/supabase';
 import { Post, PlatformId } from '@/types';
+import { getPosts, getPost as getPostFromDb } from '@/lib/db';
 
 // Query Keys - centralized for consistency
 export const queryKeys = {
@@ -18,14 +19,8 @@ export function usePosts() {
     return useQuery({
         queryKey: queryKeys.posts,
         queryFn: async () => {
-            const supabase = getSupabase();
-            const { data, error } = await supabase
-                .from('posts')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            return (data || []) as Post[];
+            // Use getPosts from db.ts which properly maps fields and includes platforms
+            return await getPosts();
         },
     });
 }
@@ -34,15 +29,10 @@ export function usePost(id: string) {
     return useQuery({
         queryKey: queryKeys.post(id),
         queryFn: async () => {
-            const supabase = getSupabase();
-            const { data, error } = await supabase
-                .from('posts')
-                .select('*')
-                .eq('id', id)
-                .single();
-
-            if (error) throw error;
-            return data as Post;
+            // Use getPost from db.ts which properly maps fields and includes platforms
+            const post = await getPostFromDb(id);
+            if (!post) throw new Error('Post not found');
+            return post;
         },
         enabled: !!id,
     });

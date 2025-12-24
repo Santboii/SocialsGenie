@@ -4,6 +4,7 @@ import { useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { ThemeProvider } from '@/providers/ThemeProvider';
 import Sidebar from '@/components/layout/Sidebar';
 import styles from '@/app/layout.module.css';
 
@@ -59,11 +60,13 @@ function AppContent({ children }: { children: ReactNode }) {
 
 export function AppWrapper({ children }: { children: ReactNode }) {
     return (
-        <QueryProvider>
-            <AuthProvider>
-                <AppContent>{children}</AppContent>
-            </AuthProvider>
-        </QueryProvider>
+        <ThemeProvider>
+            <QueryProvider>
+                <AuthProvider>
+                    <AppContent>{children}</AppContent>
+                </AuthProvider>
+            </QueryProvider>
+        </ThemeProvider>
     );
 }
 

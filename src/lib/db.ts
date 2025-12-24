@@ -402,6 +402,36 @@ export async function publishPost(id: string): Promise<Post> {
         }
     }
 
+    // Publish to X (Twitter) if it's a selected platform
+    if (post.platforms.includes('twitter')) {
+        try {
+            // Use custom content if available, otherwise shared content
+            const contentToPublish = post.platformContent?.twitter || post.content;
+
+            const response = await fetch('/api/publish/x', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    postId: id,
+                    content: contentToPublish,
+                }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to publish to X');
+            }
+
+            results.push({ platform: 'twitter', success: true });
+        } catch (error) {
+            results.push({
+                platform: 'twitter',
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        }
+    }
+
     // Check if any platform succeeded
     const anySuccess = results.some(r => r.success);
     const allFailed = results.length > 0 && results.every(r => !r.success);

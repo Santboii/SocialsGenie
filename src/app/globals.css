@@ -2,66 +2,66 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* Colors - Dark Theme (Default) */
-  --bg-primary: #09090b;
-  --bg-secondary: #0f0f12;
-  --bg-tertiary: #18181b;
-  --bg-elevated: #1f1f23;
-  --bg-card: rgba(24, 24, 27, 0.85);
-  --bg-card-hover: rgba(39, 39, 42, 0.95);
+  /* Colors - Light Theme (Default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-elevated: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-card-hover: rgba(248, 250, 252, 1);
 
   /* Text */
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --text-faint: #52525b;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
 
-  /* Accent Gradients - More vibrant */
+  /* Accent Gradients - Vibrant */
   --gradient-primary: linear-gradient(135deg, #a855f7 0%, #6366f1 40%, #ec4899 100%);
   --gradient-secondary: linear-gradient(135deg, #6366f1 0%, #0ea5e9 100%);
   --gradient-accent: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
   --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  --gradient-subtle: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+  --gradient-subtle: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
 
   /* Accent Colors */
-  --accent-purple: #a855f7;
-  --accent-blue: #6366f1;
-  --accent-indigo: #4f46e5;
-  --accent-pink: #ec4899;
-  --accent-cyan: #06b6d4;
-  --accent-orange: #f97316;
-  --accent-green: #10b981;
-  --accent-red: #ef4444;
-  --accent-yellow: #eab308;
+  --accent-purple: #9333ea;
+  --accent-blue: #4f46e5;
+  --accent-indigo: #4338ca;
+  --accent-pink: #db2777;
+  --accent-cyan: #0891b2;
+  --accent-orange: #ea580c;
+  --accent-green: #059669;
+  --accent-red: #dc2626;
+  --accent-yellow: #ca8a04;
 
-  /* Platform Colors - Enhanced */
-  --twitter-color: #1da1f2;
-  --twitter-bg: rgba(29, 161, 242, 0.1);
+  /* Platform Colors */
+  --twitter-color: #000000;
+  --twitter-bg: rgba(0, 0, 0, 0.05);
   --instagram-gradient: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-  --instagram-bg: rgba(225, 48, 108, 0.1);
+  --instagram-bg: rgba(225, 48, 108, 0.08);
   --linkedin-color: #0a66c2;
-  --linkedin-bg: rgba(10, 102, 194, 0.1);
+  --linkedin-bg: rgba(10, 102, 194, 0.08);
   --facebook-color: #1877f2;
-  --facebook-bg: rgba(24, 119, 242, 0.1);
-  --threads-color: #ffffff;
-  --threads-bg: rgba(255, 255, 255, 0.1);
+  --facebook-bg: rgba(24, 119, 242, 0.08);
+  --threads-color: #000000;
+  --threads-bg: rgba(0, 0, 0, 0.05);
 
   /* Borders */
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-light: rgba(255, 255, 255, 0.12);
-  --border-medium: rgba(255, 255, 255, 0.18);
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-light: rgba(0, 0, 0, 0.1);
+  --border-medium: rgba(0, 0, 0, 0.15);
   --border-focus: rgba(168, 85, 247, 0.5);
   --border-success: rgba(16, 185, 129, 0.5);
   --border-error: rgba(239, 68, 68, 0.5);
 
-  /* Shadows - More dramatic */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.7);
-  --shadow-glow-purple: 0 0 32px rgba(168, 85, 247, 0.4);
-  --shadow-glow-blue: 0 0 32px rgba(99, 102, 241, 0.4);
-  --shadow-glow-pink: 0 0 32px rgba(236, 72, 153, 0.3);
+  /* Shadows - Light theme */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12);
+  --shadow-glow-purple: 0 0 32px rgba(168, 85, 247, 0.2);
+  --shadow-glow-blue: 0 0 32px rgba(99, 102, 241, 0.2);
+  --shadow-glow-pink: 0 0 32px rgba(236, 72, 153, 0.15);
 
   /* Blur */
   --blur-glass: 20px;
@@ -128,6 +128,53 @@
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 72px;
   --header-height: 64px;
+}
+
+/* Dark Theme */
+[data-theme='dark'] {
+  --bg-primary: #09090b;
+  --bg-secondary: #0f0f12;
+  --bg-tertiary: #18181b;
+  --bg-elevated: #1f1f23;
+  --bg-card: rgba(24, 24, 27, 0.85);
+  --bg-card-hover: rgba(39, 39, 42, 0.95);
+
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-faint: #52525b;
+
+  --gradient-subtle: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+
+  --accent-purple: #a855f7;
+  --accent-blue: #6366f1;
+  --accent-indigo: #4f46e5;
+  --accent-pink: #ec4899;
+  --accent-cyan: #06b6d4;
+  --accent-orange: #f97316;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --accent-yellow: #eab308;
+
+  --twitter-color: #1da1f2;
+  --twitter-bg: rgba(29, 161, 242, 0.1);
+  --instagram-bg: rgba(225, 48, 108, 0.1);
+  --linkedin-bg: rgba(10, 102, 194, 0.1);
+  --facebook-bg: rgba(24, 119, 242, 0.1);
+  --threads-color: #ffffff;
+  --threads-bg: rgba(255, 255, 255, 0.1);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-light: rgba(255, 255, 255, 0.12);
+  --border-medium: rgba(255, 255, 255, 0.18);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.7);
+  --shadow-glow-purple: 0 0 32px rgba(168, 85, 247, 0.4);
+  --shadow-glow-blue: 0 0 32px rgba(99, 102, 241, 0.4);
+  --shadow-glow-pink: 0 0 32px rgba(236, 72, 153, 0.3);
 }
 
 /* Light Theme (Default) */

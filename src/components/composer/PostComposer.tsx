@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { PlatformId, PLATFORMS, getCharacterLimit, Platform, MediaAttachment, generateId } from '@/types';
 import { createPost } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
+import { getPlatformIcon } from '@/components/ui/PlatformIcons';
+import { useInvalidatePosts } from '@/hooks/useQueries';
 import styles from './Composer.module.css';
 
 type ContentMode = 'shared' | PlatformId;
@@ -12,6 +14,7 @@ type ContentMode = 'shared' | PlatformId;
 export default function PostComposer() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const invalidatePosts = useInvalidatePosts();
     const [connectedPlatformIds, setConnectedPlatformIds] = useState<PlatformId[]>([]);
     const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformId[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -656,6 +659,7 @@ export default function PostComposer() {
                 platformContent,
                 media: uploadedMedia,
             });
+            invalidatePosts(); // Refresh posts cache for immediate display
             router.push('/');
         } catch (err) {
             console.error('Failed to create post:', err);
@@ -700,7 +704,7 @@ export default function PostComposer() {
                                     type="button"
                                     title={isSelected ? 'Click to deselect' : 'Click to select'}
                                 >
-                                    <span style={{ color: isSelected ? platform.color : undefined }}>{platform.icon}</span>
+                                    <span style={{ color: isSelected ? platform.color : undefined }}>{getPlatformIcon(platform.id, 18)}</span>
                                     <span>{platform.name}</span>
                                     {status === 'error' && isSelected && <span className={styles.errorIndicator}>!</span>}
                                 </button>
@@ -922,164 +926,174 @@ export default function PostComposer() {
                         </div>
                     )}
 
-                    {/* Image Upload Dropzone */}
-                    <div
-                        className={`${styles.mediaDropzone} ${isDragging ? styles.dragging : ''} ${selectedImages.length > 0 ? styles.hasImages : ''}`}
-                        onClick={() => fileInputRef.current?.click()}
-                        onDrop={handleDrop}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                    >
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={(e) => handleFileSelect(e.target.files)}
-                            style={{ display: 'none' }}
-                        />
+                    {/* Image Upload Dropzone - Hidden for X tab */}
+                    {activeTab !== 'twitter' && (
+                        <div
+                            className={`${styles.mediaDropzone} ${isDragging ? styles.dragging : ''} ${selectedImages.length > 0 ? styles.hasImages : ''}`}
+                            onClick={() => fileInputRef.current?.click()}
+                            onDrop={handleDrop}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                        >
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={(e) => handleFileSelect(e.target.files)}
+                                style={{ display: 'none' }}
+                            />
 
-                        {selectedImages.length === 0 ? (
-                            <>
-                                <div className={styles.dropzoneContent}>
-                                    <span className={styles.dropzoneIcon}>📷</span>
-                                    <span className={styles.dropzoneText}>Click or drag images here</span>
-                                    <span className={styles.dropzoneHint}>Up to 4 images</span>
-                                </div>
+                            {selectedImages.length === 0 ? (
+                                <>
+                                    <div className={styles.dropzoneContent}>
+                                        <span className={styles.dropzoneIcon}>📷</span>
+                                        <span className={styles.dropzoneText}>Click or drag images here</span>
+                                        <span className={styles.dropzoneHint}>Up to 4 images</span>
+                                    </div>
 
-                                {/* Floating AI button in corner - same pattern as textarea */}
-                                <button
-                                    type="button"
-                                    className={styles.floatingAIButton}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowAIImagePanel(!showAIImagePanel);
-                                        setShowAIPanel(false);
-                                    }}
-                                    title="Generate an image with AI"
-                                >
-                                    ✨
-                                </button>
-
-                                {/* AI Image Popover - emerges from button */}
-                                {showAIImagePanel && (
-                                    <div
-                                        className={styles.aiPopoverFromButton}
-                                        onClick={(e) => e.stopPropagation()}
+                                    {/* Floating AI button in corner - same pattern as textarea */}
+                                    <button
+                                        type="button"
+                                        className={styles.floatingAIButton}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowAIImagePanel(!showAIImagePanel);
+                                            setShowAIPanel(false);
+                                        }}
+                                        title="Generate an image with AI"
                                     >
-                                        <div className={styles.aiPopoverHeader}>
-                                            <h3 className={styles.aiPopoverTitle}>
-                                                <span>🖼️</span> AI Image
-                                            </h3>
+                                        ✨
+                                    </button>
+
+                                    {/* AI Image Popover - emerges from button */}
+                                    {showAIImagePanel && (
+                                        <div
+                                            className={styles.aiPopoverFromButton}
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <div className={styles.aiPopoverHeader}>
+                                                <h3 className={styles.aiPopoverTitle}>
+                                                    <span>🖼️</span> AI Image
+                                                </h3>
+                                                <button
+                                                    onClick={() => setShowAIImagePanel(false)}
+                                                    className={styles.aiPopoverClose}
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+
+                                            <div className={styles.aiPopoverBody}>
+                                                <div>
+                                                    <label className={styles.aiPopoverLabel}>
+                                                        Describe your image
+                                                    </label>
+                                                    <textarea
+                                                        value={aiImagePrompt}
+                                                        onChange={(e) => {
+                                                            setAiImagePrompt(e.target.value);
+                                                            if (isAiImagePromptOptimized) {
+                                                                setIsAiImagePromptOptimized(false);
+                                                                setOriginalAiImagePrompt(null);
+                                                            }
+                                                        }}
+                                                        className={`${styles.aiPopoverTextarea} ${isAiImagePromptOptimized ? styles.optimizedTextarea : ''}`}
+                                                        placeholder={sharedContent ? "Leave blank to use post content" : "A vibrant photo of..."}
+                                                        autoFocus
+                                                    />
+                                                    <div className={styles.optimizeRow}>
+                                                        <button
+                                                            onClick={handleOptimizeAiImagePrompt}
+                                                            disabled={!aiImagePrompt || isOptimizingAiImagePrompt || isAiImagePromptOptimized}
+                                                            className={styles.optimizeBtnSecondary}
+                                                            type="button"
+                                                        >
+                                                            {isOptimizingAiImagePrompt ? (
+                                                                <>
+                                                                    <span className={styles.spinner} />
+                                                                    <span>Optimizing...</span>
+                                                                </>
+                                                            ) : isAiImagePromptOptimized ? (
+                                                                <>
+                                                                    <span>✨</span>
+                                                                    <span>Prompt optimized</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <span>✨</span>
+                                                                    <span>Optimize Prompt</span>
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                        {isAiImagePromptOptimized && originalAiImagePrompt && (
+                                                            <button
+                                                                onClick={handleRevertAiImagePrompt}
+                                                                className={styles.revertBtn}
+                                                                type="button"
+                                                            >
+                                                                ↩ Revert
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    onClick={handleAIImageGenerate}
+                                                    disabled={isGeneratingImage}
+                                                    className={styles.aiPopoverSubmit}
+                                                    style={{ width: '100%' }}
+                                                >
+                                                    {isGeneratingImage ? (
+                                                        <>
+                                                            <span className={styles.spinner} />
+                                                            <span>Generating...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>🖼️</span>
+                                                            <span>Generate Image</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className={styles.imagePreviewGrid}>
+                                    {imagePreviews.map((preview, index) => (
+                                        <div key={index} className={styles.imagePreviewItem}>
+                                            <img src={preview} alt={`Preview ${index + 1}`} />
                                             <button
-                                                onClick={() => setShowAIImagePanel(false)}
-                                                className={styles.aiPopoverClose}
+                                                type="button"
+                                                className={styles.removeImageBtn}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeImage(index);
+                                                }}
                                             >
                                                 ✕
                                             </button>
                                         </div>
-
-                                        <div className={styles.aiPopoverBody}>
-                                            <div>
-                                                <label className={styles.aiPopoverLabel}>
-                                                    Describe your image
-                                                </label>
-                                                <textarea
-                                                    value={aiImagePrompt}
-                                                    onChange={(e) => {
-                                                        setAiImagePrompt(e.target.value);
-                                                        if (isAiImagePromptOptimized) {
-                                                            setIsAiImagePromptOptimized(false);
-                                                            setOriginalAiImagePrompt(null);
-                                                        }
-                                                    }}
-                                                    className={`${styles.aiPopoverTextarea} ${isAiImagePromptOptimized ? styles.optimizedTextarea : ''}`}
-                                                    placeholder={sharedContent ? "Leave blank to use post content" : "A vibrant photo of..."}
-                                                    autoFocus
-                                                />
-                                                <div className={styles.optimizeRow}>
-                                                    <button
-                                                        onClick={handleOptimizeAiImagePrompt}
-                                                        disabled={!aiImagePrompt || isOptimizingAiImagePrompt || isAiImagePromptOptimized}
-                                                        className={styles.optimizeBtnSecondary}
-                                                        type="button"
-                                                    >
-                                                        {isOptimizingAiImagePrompt ? (
-                                                            <>
-                                                                <span className={styles.spinner} />
-                                                                <span>Optimizing...</span>
-                                                            </>
-                                                        ) : isAiImagePromptOptimized ? (
-                                                            <>
-                                                                <span>✨</span>
-                                                                <span>Prompt optimized</span>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <span>✨</span>
-                                                                <span>Optimize Prompt</span>
-                                                            </>
-                                                        )}
-                                                    </button>
-                                                    {isAiImagePromptOptimized && originalAiImagePrompt && (
-                                                        <button
-                                                            onClick={handleRevertAiImagePrompt}
-                                                            className={styles.revertBtn}
-                                                            type="button"
-                                                        >
-                                                            ↩ Revert
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                onClick={handleAIImageGenerate}
-                                                disabled={isGeneratingImage}
-                                                className={styles.aiPopoverSubmit}
-                                                style={{ width: '100%' }}
-                                            >
-                                                {isGeneratingImage ? (
-                                                    <>
-                                                        <span className={styles.spinner} />
-                                                        <span>Generating...</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <span>🖼️</span>
-                                                        <span>Generate Image</span>
-                                                    </>
-                                                )}
-                                            </button>
+                                    ))}
+                                    {selectedImages.length < 4 && (
+                                        <div className={styles.addMoreImages}>
+                                            <span>+</span>
                                         </div>
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <div className={styles.imagePreviewGrid}>
-                                {imagePreviews.map((preview, index) => (
-                                    <div key={index} className={styles.imagePreviewItem}>
-                                        <img src={preview} alt={`Preview ${index + 1}`} />
-                                        <button
-                                            type="button"
-                                            className={styles.removeImageBtn}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                removeImage(index);
-                                            }}
-                                        >
-                                            ✕
-                                        </button>
-                                    </div>
-                                ))}
-                                {selectedImages.length < 4 && (
-                                    <div className={styles.addMoreImages}>
-                                        <span>+</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* X Media Warning - shown only when images are uploaded and X is selected */}
+                    {selectedPlatforms.includes('twitter') && selectedImages.length > 0 && (
+                        <div className={styles.xMediaWarning}>
+                            <span>⚠️</span>
+                            <span>Images are not yet supported for X (Twitter). Photos will only be posted to other selected platforms.</span>
+                        </div>
+                    )}
 
                     {/* Schedule Section */}
                     <div className={styles.scheduleSection}>
@@ -1209,7 +1223,7 @@ export default function PostComposer() {
                                             <span className={styles.customLabel}>Custom</span>
                                         )}
                                         <div className={styles.platformBadge} style={{ color: platform.color }}>
-                                            <span>{platform.icon}</span>
+                                            <span>{getPlatformIcon(platform.id, 16)}</span>
                                             <span>{platform.name}</span>
                                         </div>
                                     </div>

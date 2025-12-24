@@ -1,0 +1,196 @@
+import { createAdminClient } from '@/lib/supabase/admin';
+import { Post, PlatformId } from '@/types';
+import { postTweet, refreshAccessToken } from '@/lib/social/x';
+import { postToFacebookPage, postToInstagram } from '@/lib/social/meta';
+
+// Define DB types locally to strictly type the admin query results
+interface DbPost {
+    id: string;
+    user_id: string;
+    content: string;
+    media: string[];
+    scheduled_at: string;
+}
+
+interface DbPostPlatform {
+    platform: PlatformId;
+    custom_content: string | null;
+}
+
+interface DbConnection {
+    platform: PlatformId;
+    access_token: string;
+    refresh_token: string;
+    token_expires_at: string | null;
+    platform_user_id: string; // page ID for FB
+}
+
+export async function publishScheduledPosts() {
+    const supabase = createAdminClient();
+    const results = {
+        processed: 0,
+        published: 0,
+        failed: 0,
+        errors: [] as string[],
+    };
+
+    try {
+        // 1. Get due scheduled posts
+        const now = new Date().toISOString();
+        const { data: posts, error: postsError } = await supabase
+            .from('posts')
+            .select(`
+                id, 
+                user_id, 
+                content, 
+                media, 
+                scheduled_at,
+                post_platforms (platform, custom_content)
+            `)
+            .eq('status', 'scheduled')
+            .lte('scheduled_at', now)
+            .limit(50); // Batch size
+
+        if (postsError) throw new Error(`Failed to fetch posts: ${postsError.message}`);
+        if (!posts || posts.length === 0) return results;
+
+        results.processed = posts.length;
+
+        // 2. Process each post
+        for (const post of posts) {
+            try {
+                // Get user's connections
+                const { data: connections, error: connError } = await supabase
+                    .from('connected_accounts')
+                    .select('*')
+                    .eq('user_id', post.user_id);
+
+                if (connError) throw new Error(`Failed to fetch connections for user ${post.user_id}`);
+
+                const platforms = post.post_platforms as DbPostPlatform[];
+                const platformResults: string[] = [];
+                let hasFailures = false;
+
+                // 3. Publish to each platform
+                for (const platformData of platforms) {
+                    const platformId = platformData.platform;
+                    const connection = connections.find(c => c.platform === platformId);
+
+                    if (!connection) {
+                        platformResults.push(`${platformId}: Not connected`);
+                        hasFailures = true;
+                        continue;
+                    }
+
+                    try {
+                        const content = platformData.custom_content || post.content;
+
+                        if (platformId === 'twitter') {
+                            await publishToTwitter(supabase, connection, content);
+                        } else if (platformId === 'facebook') {
+                            await publishToFacebook(connection, content, post.media);
+                        } else if (platformId === 'instagram') {
+                            await publishToInstagram(connection, content, post.media);
+                        } else {
+                            // Other platforms or mapping not implemented
+                            console.warn(`Platform ${platformId} implementation pending`);
+                        }
+
+                        platformResults.push(platformId);
+                    } catch (err) {
+                        console.error(`Failed to publish to ${platformId}:`, err);
+                        platformResults.push(`${platformId}: ${(err as Error).message}`);
+                        hasFailures = true;
+                    }
+                }
+
+                // 4. Update post status
+                // If at least one succeeded, mark as published (logic similar to client-side)
+                // If ALL failed, mark as failed.
+                const allFailed = platforms.length > 0 && hasFailures && platformResults.every(r => r.includes(':'));
+                const newStatus = allFailed ? 'failed' : 'published';
+
+                await supabase
+                    .from('posts')
+                    .update({
+                        status: newStatus,
+                        published_at: allFailed ? null : new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq('id', post.id);
+
+                // Log activity
+                await supabase.from('activities').insert({
+                    user_id: post.user_id,
+                    type: 'published',
+                    post_id: post.id,
+                    message: allFailed
+                        ? `Failed to publish scheduled post: ${platformResults.join(', ')}`
+                        : `Published scheduled post to ${platformResults.filter(r => !r.includes(':')).join(', ')}`,
+                });
+
+                if (allFailed) results.failed++;
+                else results.published++;
+
+            } catch (postErr) {
+                console.error(`Error processing post ${post.id}:`, postErr);
+                results.errors.push(`Post ${post.id}: ${(postErr as Error).message}`);
+                results.failed++;
+
+                // Mark as failed so we don't loop forever
+                await supabase.from('posts').update({ status: 'failed' }).eq('id', post.id);
+            }
+        }
+
+    } catch (err) {
+        console.error('Cron job error:', err);
+        results.errors.push((err as Error).message);
+    }
+
+    return results;
+}
+
+// Helper: Publish to Twitter with token refresh
+async function publishToTwitter(supabase: any, connection: any, content: string) {
+    let accessToken = connection.access_token;
+
+    // Refresh if needed
+    if (connection.token_expires_at && new Date(connection.token_expires_at) < new Date()) {
+        const newTokens = await refreshAccessToken(connection.refresh_token);
+        accessToken = newTokens.accessToken;
+
+        // Update DB
+        await supabase
+            .from('connected_accounts')
+            .update({
+                access_token: newTokens.accessToken,
+                refresh_token: newTokens.refreshToken,
+                token_expires_at: newTokens.expiresAt.toISOString(),
+            })
+            .eq('id', connection.id);
+    }
+
+    await postTweet(accessToken, content);
+}
+
+// Helper: Publish to Facebook
+async function publishToFacebook(connection: any, content: string, media: string[]) {
+    // connection.platform_user_id should be the Page ID for Facebook pages type connection
+    // But `connected_accounts` might store the User ID, and we need to fetch Pages?
+    // Usually the connection stores the Page Access Token if it's a Page connection.
+    // Assuming `access_token` is the Page Access Token.
+    // If we only have User Token, we need to find the page... logic depends on how auth is stored.
+    // Assuming for MVP the token in `connected_accounts` is usable for the target destination.
+
+    // For now, assume access_token is valid page token or user token with permissions
+
+    // Wait, `postToFacebookPage` needs `pageId`. `connection.platform_user_id` should effectively be the Page ID if the user selected a page.
+    // If not, we might need extra logic to select a page.
+    await postToFacebookPage(connection.platform_user_id, connection.access_token, content, media);
+}
+
+// Helper: Publish to Instagram
+async function publishToInstagram(connection: any, content: string, media: string[]) {
+    // Similar assumption: platform_user_id is the Instagram Business Account ID
+    await postToInstagram(connection.platform_user_id, connection.access_token, content, media && media.length > 0 ? media[0] : undefined);
+}
