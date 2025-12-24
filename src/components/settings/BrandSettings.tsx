@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
+import { useQueryClient } from '@tanstack/react-query';
+import { useBrandProfile, queryKeys } from '@/hooks/useQueries';
 import { BrandProfile } from '@/types';
 
 const PREDEFINED_TONES = [
@@ -9,7 +11,9 @@ const PREDEFINED_TONES = [
 ];
 
 export default function BrandSettings() {
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
+    const { data: serverProfile, isLoading } = useBrandProfile();
+
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -26,34 +30,16 @@ export default function BrandSettings() {
     );
 
     useEffect(() => {
-        loadProfile();
-    }, []);
-
-    const loadProfile = async () => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            const { data, error } = await supabase
-                .from('brand_profiles')
-                .select('*')
-                .eq('user_id', user.id)
-                .single();
-
-            if (error && error.code !== 'PGRST116') {
-                console.error('Error loading profile:', error);
-                return;
-            }
-
-            if (data) {
-                const examples = data.examples || [];
-                while (examples.length < 3) examples.push('');
-                setProfile({ ...data, examples });
-            }
-        } finally {
-            setLoading(false);
+        if (serverProfile) {
+            const examples = serverProfile.examples || [];
+            while (examples.length < 3) examples.push('');
+            setProfile({ ...serverProfile, examples });
         }
-    };
+    }, [serverProfile]);
+
+    // Keep loading state true only if we're initially loading and don't have profile data yet
+    // This allows background refetching without blocking the UI
+    const isInitialLoading = isLoading && !serverProfile;
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -78,6 +64,9 @@ export default function BrandSettings() {
                 .upsert(profileData, { onConflict: 'user_id' });
 
             if (error) throw error;
+
+            await queryClient.invalidateQueries({ queryKey: queryKeys.brandProfile });
+
             setMessage({ type: 'success', text: 'Brand DNA saved successfully!' });
         } catch (error) {
             console.error('Error saving profile:', error);
@@ -102,7 +91,7 @@ export default function BrandSettings() {
         }
     };
 
-    if (loading) {
+    if (isInitialLoading) {
         return (
             <div className="min-h-[60vh] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">

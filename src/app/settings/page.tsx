@@ -153,7 +153,7 @@ export default function SettingsPage() {
 
             <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>
-                    <span>🧬</span>
+
                     <span>AI & Content</span>
                 </h2>
 
@@ -179,7 +179,7 @@ export default function SettingsPage() {
 
             <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>
-                    <span>🔌</span>
+
                     <span>Connected Platforms</span>
                 </h2>
 
@@ -319,7 +319,7 @@ export default function SettingsPage() {
 
             <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>
-                    <span>🎨</span>
+
                     <span>Appearance</span>
                 </h2>
 

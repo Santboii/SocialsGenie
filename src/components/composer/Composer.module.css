@@ -211,15 +211,17 @@
 /* Tab Info */
 .tabInfo {
     padding: var(--space-3);
-    background: var(--bg-tertiary);
+    background: rgba(168, 85, 247, 0.04);
+    border: 1px solid rgba(168, 85, 247, 0.15);
     border-radius: var(--radius-lg);
-    border-left: 3px solid var(--accent-purple);
+    margin-bottom: var(--space-3);
 }
 
 .tabDescription {
     font-size: var(--text-sm);
     color: var(--text-secondary);
     margin: 0;
+    font-weight: 500;
 }
 
 .tabDescription strong {
@@ -796,6 +798,80 @@
     gap: var(--space-3);
     cursor: pointer;
     user-select: none;
+}
+
+/* Image Preview Modal */
+.imageModalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    animation: simpleFadeIn 0.2s ease-out;
+}
+
+.imageModalContent {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    animation: imageScaleIn 0.2s ease-out;
+}
+
+@keyframes simpleFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes imageScaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.imageModalContent img {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2xl);
+    object-fit: contain;
+}
+
+.closeModalBtn {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    backdrop-filter: blur(4px);
+}
+
+.closeModalBtn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
 }
 
 .scheduleToggle input {

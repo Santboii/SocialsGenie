@@ -27,7 +27,7 @@ export default function PostComposer() {
     const [originalAiTopic, setOriginalAiTopic] = useState<string | null>(null);
     const [isAiTopicOptimized, setIsAiTopicOptimized] = useState(false);
     const [isOptimizingAiTopic, setIsOptimizingAiTopic] = useState(false);
-    const [aiIncludeImage, setAiIncludeImage] = useState(false);
+
     const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
     // Platform Optimization State
@@ -66,6 +66,7 @@ export default function PostComposer() {
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [isDragging, setIsDragging] = useState(false);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
 
     // Handle initial params from AI Composer (Legacy support for external redirects if any)
     useEffect(() => {
@@ -218,7 +219,7 @@ export default function PostComposer() {
                 body: JSON.stringify({
                     topic: aiTopic,
                     platform: targetPlatform,
-                    includeImage: aiIncludeImage
+
                 })
             });
 
@@ -891,14 +892,7 @@ export default function PostComposer() {
                                     </div>
 
                                     <div className={styles.aiPopoverActions}>
-                                        <label className={styles.aiPopoverCheckbox}>
-                                            <input
-                                                type="checkbox"
-                                                checked={aiIncludeImage}
-                                                onChange={(e) => setAiIncludeImage(e.target.checked)}
-                                            />
-                                            <span>Generate Image</span>
-                                        </label>
+
 
                                         <button
                                             onClick={handleAIGenerate}
@@ -1084,7 +1078,15 @@ export default function PostComposer() {
                                 <div className={styles.imagePreviewGrid}>
                                     {imagePreviews.map((preview, index) => (
                                         <div key={index} className={styles.imagePreviewItem}>
-                                            <img src={preview} alt={`Preview ${index + 1}`} />
+                                            <img
+                                                src={preview}
+                                                alt={`Preview ${index + 1}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPreviewImage(preview);
+                                                }}
+                                                style={{ cursor: 'pointer' }}
+                                            />
                                             <button
                                                 type="button"
                                                 className={styles.removeImageBtn}
@@ -1261,6 +1263,11 @@ export default function PostComposer() {
                                                 src={preview}
                                                 alt={`Attachment ${index + 1}`}
                                                 className={styles.previewImageThumb}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPreviewImage(preview);
+                                                }}
+                                                style={{ cursor: 'pointer' }}
                                             />
                                         ))}
                                     </div>
@@ -1279,6 +1286,26 @@ export default function PostComposer() {
                     })
                 )}
             </div>
+            {/* Full Screen Image Preview Modal */}
+            {previewImage && (
+                <div
+                    className={styles.imageModalOverlay}
+                    onClick={() => setPreviewImage(null)}
+                >
+                    <div
+                        className={styles.imageModalContent}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            className={styles.closeModalBtn}
+                            onClick={() => setPreviewImage(null)}
+                        >
+                            ✕
+                        </button>
+                        <img src={previewImage} alt="Full size preview" />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
