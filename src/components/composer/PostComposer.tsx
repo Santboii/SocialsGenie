@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PlatformId, PLATFORMS, getCharacterLimit, Platform, MediaAttachment, generateId } from '@/types';
-import { createPost } from '@/lib/db';
+import { createPost, publishPost } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 import { useInvalidatePosts } from '@/hooks/useQueries';
@@ -565,7 +565,11 @@ export default function PostComposer() {
 
     const getMinDate = (): string => {
         const now = new Date();
-        return now.toISOString().split('T')[0];
+        // Use local time instead of UTC to fix "today" selection issues
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
 
     const formatSchedulePreview = (): string => {
@@ -589,6 +593,8 @@ export default function PostComposer() {
         // So strict requirement is sharedContent. 
         return true;
     };
+
+    const canSchedule = scheduleEnabled && scheduleDate && scheduleTime;
 
     const getDisabledReason = (): string | undefined => {
         if (isSubmitting) return 'Publishing in progress...';
@@ -640,7 +646,7 @@ export default function PostComposer() {
         return uploadedMedia;
     };
 
-    const handleSubmit = async (status: 'draft' | 'scheduled' = 'draft') => {
+    const handleSubmit = async (targetStatus: 'draft' | 'scheduled' | 'published' = 'draft') => {
         if (!hasValidContent()) return;
 
         setIsSubmitting(true);
@@ -650,15 +656,31 @@ export default function PostComposer() {
             // Upload images first
             const uploadedMedia = await uploadImages();
 
-            const scheduledAt = status === 'scheduled' ? getScheduledDateTime() : undefined;
-            await createPost({
+            // Logic:
+            // 1. If 'published', create as 'published' (if DB supports invalidating) or 'draft' then publish?
+            //    Best flow: Create as 'draft' first, then call publishPost. 
+            //    Wait, creating as 'published' directly might imply it's already done? 
+            //    No, for immediate publish we need to run the API calls.
+            // 2. If 'scheduled', create as 'scheduled' with date.
+            // 3. If 'draft', create as 'draft'.
+
+            const initialStatus = targetStatus === 'published' ? 'draft' : targetStatus;
+            const scheduledAt = targetStatus === 'scheduled' ? getScheduledDateTime() : undefined;
+
+            const post = await createPost({
                 content: sharedContent,
                 platforms: selectedPlatforms,
-                status,
+                status: initialStatus,
                 scheduledAt,
                 platformContent,
                 media: uploadedMedia,
             });
+
+            if (targetStatus === 'published') {
+                // Trigger immediate publish
+                await publishPost(post.id);
+            }
+
             invalidatePosts(); // Refresh posts cache for immediate display
             router.push('/');
         } catch (err) {
@@ -668,8 +690,6 @@ export default function PostComposer() {
             setIsSubmitting(false);
         }
     };
-
-    const canSchedule = scheduleEnabled && scheduleDate && scheduleTime;
 
     return (
         <div className={styles.composerContainer}>
@@ -1152,7 +1172,7 @@ export default function PostComposer() {
                         </button>
                         <button
                             className={`${styles.primaryBtn} ${hasAnyError() ? styles.errorBtn : ''}`}
-                            onClick={() => handleSubmit('scheduled')}
+                            onClick={() => handleSubmit(scheduleEnabled ? 'scheduled' : 'published')}
                             disabled={!!disabledReason}
                             type="button"
                             title={disabledReason}

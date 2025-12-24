@@ -6,18 +6,21 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import styles from './Sidebar.module.css';
 
+import { LayoutDashboard, PenSquare, Calendar, FileText, Settings } from 'lucide-react';
+import Image from 'next/image';
+
 interface NavItem {
     label: string;
     href: string;
-    icon: string;
+    icon: React.ElementType;
     badge?: number;
 }
 
 const staticNavItems: NavItem[] = [
-    { label: 'Dashboard', href: '/', icon: '🏠' },
-    { label: 'Write Post', href: '/compose', icon: '✏️' },
-    { label: 'Calendar', href: '/calendar', icon: '📅' },
-    { label: 'Posts', href: '/posts', icon: '📝' },
+    { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { label: 'Write Post', href: '/compose', icon: PenSquare },
+    { label: 'Calendar', href: '/calendar', icon: Calendar },
+    { label: 'Posts', href: '/posts', icon: FileText },
 ];
 
 export default function Sidebar() {
@@ -26,7 +29,7 @@ export default function Sidebar() {
 
     const navItems: NavItem[] = [
         ...staticNavItems,
-        { label: 'Settings', href: '/settings', icon: '⚙️' },
+        { label: 'Settings', href: '/settings', icon: Settings },
     ];
 
     const handleLogout = async () => {
@@ -39,7 +42,14 @@ export default function Sidebar() {
     return (
         <aside className={styles.sidebar}>
             <div className={styles.logo}>
-                <span className={styles.logoIcon}>🚀</span>
+                <Image
+                    src="/logo.png"
+                    alt="SocialsGenie Logo"
+                    width={40}
+                    height={40}
+                    className={styles.logoImage}
+                    priority
+                />
                 <span className={styles.logoText}>SocialsGenie</span>
             </div>
 
@@ -48,13 +58,15 @@ export default function Sidebar() {
                     const isActive = pathname === item.href ||
                         (item.href !== '/' && pathname.startsWith(item.href));
 
+                    const Icon = item.icon;
+
                     return (
                         <Link
                             key={item.href}
                             href={item.href}
                             className={`${styles.navItem} ${isActive ? styles.active : ''}`}
                         >
-                            <span className={styles.navIcon}>{item.icon}</span>
+                            <Icon className={styles.navIcon} size={20} />
                             <span className={styles.navLabel}>{item.label}</span>
                             {item.badge !== undefined && item.badge > 0 && (
                                 <span className={styles.badge}>{item.badge}</span>

@@ -56,14 +56,24 @@ BRAND CONTEXT:
 ` : ''}
 
 INSTRUCTIONS:
-- Expand the idea with specific details, angles, or hooks
-- Add relevant context that would help generate better content
-- Include any emotional appeal or call-to-action suggestions
-- Keep it concise but comprehensive (2-4 sentences max)
-- Maintain the user's original intent and core message
-- Don't include platform-specific formatting, just the enhanced idea
+- You are a PROMPT ENGINEER, not a copywriter.
+- Do NOT write the social media post.
+- Write a detailed PROMPT that someone else would use to write the post.
+- The user is giving you a simple topic/idea. You must expand it into a sophisticated prompt.
 
-Return ONLY the optimized prompt, no explanations or formatting.
+EXAMPLES:
+Input: "Summer sale"
+Output: "Write an energetic and urgent promotional post for our annual Summer Sale, highlighting 50% off discounts on swimwear and accessories. Use a fun, sunny tone and include emojis like ☀️ and 🏖️. Target young adults looking for vacation outfits."
+
+Input: "New coffee flavor launching"
+Output: "Create a cozy and inviting announcement for our new 'Maple Pecan' coffee blend. Describe the warm, nutty aroma and sweet flavor profile. Appeal to office workers looking for a morning treat. Ask followers to tag a coffee buddy."
+
+CURRENT REQUEST:
+- User's Idea: "${prompt}"
+${platform ? `- Target Platform: ${platform}` : ''}
+${profile ? `- Brand Brand: ${profile.brand_name}\n- Tone: ${profile.tone}` : ''}
+
+Your goal is to return ONLY the optimized prompt string.
 `;
 
         const result = await model.generateContent(systemPrompt);

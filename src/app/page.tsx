@@ -116,26 +116,33 @@ export default function Dashboard() {
             {activities.length === 0 ? (
               <div className={styles.emptyState}>No recent activity</div>
             ) : (
-              activities.slice(0, 5).map((activity: any, index: number) => (
-                <div key={activity.id} className={`${styles.activityItem} animate-slideIn`} style={{ animationDelay: `${index * 100}ms` }}>
-                  <div className={styles.activityIcon} style={{
-                    background: activity.type === 'published' ? 'rgba(16, 185, 129, 0.2)' :
-                      activity.type === 'scheduled' ? 'rgba(59, 130, 246, 0.2)' :
-                        'rgba(139, 92, 246, 0.2)',
-                    color: activity.type === 'published' ? '#10b981' :
-                      activity.type === 'scheduled' ? '#3b82f6' :
-                        '#8b5cf6'
-                  }}>
-                    {activity.type === 'published' ? '✅' : activity.type === 'scheduled' ? '📅' : '📝'}
+              activities.slice(0, 5).map((activity: any, index: number) => {
+                // Safer date parsing
+                const dateStr = activity.created_at || activity.timestamp;
+                const date = dateStr ? new Date(dateStr) : new Date();
+                const displayDate = !isNaN(date.getTime()) ? date.toLocaleString() : 'Just now';
+
+                return (
+                  <div key={activity.id || index} className={`${styles.activityItem} animate-slideIn`} style={{ animationDelay: `${index * 100}ms` }}>
+                    <div className={styles.activityIcon} style={{
+                      background: activity.type === 'published' ? 'rgba(16, 185, 129, 0.2)' :
+                        activity.type === 'scheduled' ? 'rgba(59, 130, 246, 0.2)' :
+                          'rgba(139, 92, 246, 0.2)',
+                      color: activity.type === 'published' ? '#10b981' :
+                        activity.type === 'scheduled' ? '#3b82f6' :
+                          '#8b5cf6'
+                    }}>
+                      {activity.type === 'published' ? '✅' : activity.type === 'scheduled' ? '📅' : '📝'}
+                    </div>
+                    <div className={styles.activityContent}>
+                      <p className={styles.activityMessage}>{activity.description || activity.message || 'Unknown activity'}</p>
+                      <span className={styles.activityTime}>
+                        {displayDate}
+                      </span>
+                    </div>
                   </div>
-                  <div className={styles.activityContent}>
-                    <p className={styles.activityMessage}>{activity.description || activity.message}</p>
-                    <span className={styles.activityTime}>
-                      {new Date(activity.created_at || activity.timestamp).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>

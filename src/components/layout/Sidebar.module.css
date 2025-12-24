@@ -33,23 +33,12 @@
     position: relative;
 }
 
-.logoIcon {
-    font-size: 1.75rem;
-    filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.4));
-    animation: float 4s ease-in-out infinite;
+.logoImage {
+    object-fit: contain;
+    filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.2));
 }
 
-@keyframes float {
 
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-3px);
-    }
-}
 
 .logoText {
     font-size: 1.25rem;
