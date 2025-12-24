@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import styles from './landing.module.css';
+import WaitlistForm from '@/components/landing/WaitlistForm';
 
 export default function LandingPage() {
     return (
@@ -42,17 +43,15 @@ export default function LandingPage() {
                         Let AI craft platform-perfect posts while you focus on what matters.
                         Schedule, publish, and grow your audience across all social platforms with one powerful tool.
                     </p>
+
+                    <WaitlistForm />
+
                     <div className={styles.heroCtas}>
-                        <Link href="/login" className={styles.ctaPrimary}>
-                            <span>Start Creating Free</span>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M5 12h14M12 5l7 7-7 7" />
-                            </svg>
-                        </Link>
                         <Link href="#features" className={styles.ctaSecondary}>
                             See How It Works
                         </Link>
                     </div>
+
                     <div className={styles.heroStats}>
                         <div className={styles.stat}>
                             <span className={styles.statNumber}>10k+</span>
