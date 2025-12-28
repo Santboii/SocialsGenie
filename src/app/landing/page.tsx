@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import styles from './landing.module.css';
 import WaitlistForm from '@/components/landing/WaitlistForm';
+import Image from 'next/image';
 
 export default function LandingPage() {
     return (
@@ -18,7 +19,16 @@ export default function LandingPage() {
             <nav className={styles.nav}>
                 <div className={styles.navContent}>
                     <div className={styles.logo}>
-                        <span className={styles.logoIcon}>🚀</span>
+                        <div className={styles.logoIcon}>
+                            <Image
+                                src="/logo.png"
+                                alt="SocialsGenie Logo"
+                                width={0}
+                                height={0}
+                                sizes="100vw"
+                                style={{ width: 'auto', height: '50px' }}
+                            />
+                        </div>
                         <span className={styles.logoText}>SocialsGenie</span>
                     </div>
                     <div className={styles.navLinks}>
@@ -107,6 +117,92 @@ export default function LandingPage() {
                         <div className={styles.featureIcon}>📊</div>
                         <h3>Content Calendar</h3>
                         <p>Visualize your entire content strategy. Drag, drop, and organize posts with an intuitive calendar view.</p>
+                    </div>
+                </div>
+            </section>
+
+            {/* Autopilot Workflow Section */}
+            <section className={styles.workflowSection}>
+                <div className={styles.workflowContainer}>
+                    <div className={styles.workflowHeader}>
+                        <h2 className={styles.workflowTitle}>Put Your Social Growth <span className="text-gradient">On Autopilot</span></h2>
+                        <p className={styles.workflowSubtitle}>A simple 3-step system to automate your presence without sounding like a robot.</p>
+                    </div>
+
+                    <div className={styles.workflowSteps}>
+                        {/* Step 1 */}
+                        <div className={styles.workflowStep}>
+                            <div className={styles.stepContent}>
+                                <h3><span className={styles.stepNumber}>1</span> Create Content Libraries</h3>
+                                <p>Group your content into Libraries. Whether it&apos;s timeless advice, seasonal promos, or memes, give your best posts a permanent home.</p>
+                            </div>
+                            <div className={styles.stepVisual}>
+                                <div className={styles.mockupCard}>
+                                    <div className={styles.libraryMockup}>
+                                        <div className={styles.libIcon}>💡</div>
+                                        <div className={styles.libContent}>
+                                            <div className={styles.libTitle}>Evergreen Tips</div>
+                                            <div className={styles.libStats}>
+                                                <span>12 Posts</span>
+                                                <span>•</span>
+                                                <span>Active</span>
+                                            </div>
+                                            <div className={styles.libPreview}>
+                                                &quot;5 ways to boost engagement...&quot;
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Step 2 */}
+                        <div className={styles.workflowStep}>
+                            <div className={styles.stepContent}>
+                                <h3><span className={styles.stepNumber}>2</span> Define Weekly Slots</h3>
+                                <p>Map out your ideal week. Create recurring time slots for each platform (e.g., &quot;LinkedIn: Mon/Wed/Fri @ 9am&quot;) to establish a consistent rhythm.</p>
+                            </div>
+                            <div className={styles.stepVisual}>
+                                <div className={styles.mockupCard}>
+                                    <div className={styles.scheduleMockup}>
+                                        <div className={styles.timeCol}>
+                                            <span>8:00 AM</span>
+                                            <span>9:00 AM</span>
+                                            <span>10:00 AM</span>
+                                        </div>
+                                        <div className={styles.slotCol}>
+                                            <div className={styles.mockSlot}></div>
+                                            <div className={styles.activeSlot}>LinkedIn - Tips</div>
+                                            <div className={styles.mockSlot}></div>
+                                        </div>
+                                        <div className={styles.slotCol}>
+                                            <div className={styles.activeSlot}>Twitter - Thread</div>
+                                            <div className={styles.mockSlot}></div>
+                                            <div className={styles.mockSlot}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Step 3 */}
+                        <div className={styles.workflowStep}>
+                            <div className={styles.stepContent}>
+                                <h3><span className={styles.stepNumber}>3</span> Link & Automate</h3>
+                                <p>Assign a Library to each slot. SocialsGenie will automatically pull fresh posts from that library to fill your schedule—forever.</p>
+                            </div>
+                            <div className={styles.stepVisual}>
+                                <div className={styles.mockupCard}>
+                                    <div className={styles.automateMockup}>
+                                        <div className={styles.autoNode}>📚</div>
+                                        <div className={styles.connectionLine}>
+                                            <div className={styles.connectionFlow}></div>
+                                        </div>
+                                        <div className={styles.autoNode}>📅</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -232,7 +328,16 @@ export default function LandingPage() {
             <footer className={styles.footer}>
                 <div className={styles.footerContent}>
                     <div className={styles.footerBrand}>
-                        <span className={styles.logoIcon}>🚀</span>
+                        <div className={styles.logoIcon}>
+                            <Image
+                                src="/logo.png"
+                                alt="SocialsGenie Logo"
+                                width={0}
+                                height={0}
+                                sizes="100vw"
+                                style={{ width: 'auto', height: '50px' }}
+                            />
+                        </div>
                         <span className={styles.logoText}>SocialsGenie</span>
                     </div>
                     <div className={styles.footerLinks}>
