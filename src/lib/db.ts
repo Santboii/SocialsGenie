@@ -64,6 +64,8 @@ interface DbPost {
     published_at: string | null;
     created_at: string;
     updated_at: string;
+    library_id: string | null;
+    is_evergreen: boolean;
 }
 
 interface DbPostPlatform {
@@ -108,6 +110,8 @@ function dbToPost(row: DbPost, platforms: DbPostPlatform[]): Post {
         updatedAt: row.updated_at,
         media: row.media || [],
         platformContent: Object.keys(platformContent).length > 0 ? platformContent : undefined,
+        libraryId: row.library_id || undefined,
+        isEvergreen: row.is_evergreen || false,
     };
 }
 
@@ -192,6 +196,8 @@ export interface CreatePostInput {
     scheduledAt?: string;
     platformContent?: Record<PlatformId, string>;
     media?: MediaAttachment[];
+    libraryId?: string;
+    isEvergreen?: boolean;
 }
 
 /**
@@ -203,7 +209,7 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
     const userId = await getCurrentUserId();
     const supabase = getSupabase();
 
-    const { content, platforms, status = 'draft', scheduledAt, platformContent, media } = input;
+    const { content, platforms, status = 'draft', scheduledAt, platformContent, media, libraryId, isEvergreen } = input;
 
     // Insert the post
     const { data: post, error: postError } = await supabase
@@ -214,6 +220,8 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
             media: media || [],
             status,
             scheduled_at: scheduledAt ?? null,
+            library_id: libraryId,
+            is_evergreen: isEvergreen
         })
         .select()
         .single();

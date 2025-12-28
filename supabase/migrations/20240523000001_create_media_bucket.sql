@@ -5,11 +5,13 @@ on conflict (id) do nothing;
 
 -- Set up security policies for the bucket
 -- Allow public read access
+drop policy if exists "Public Access" on storage.objects;
 create policy "Public Access"
 on storage.objects for select
 using ( bucket_id = 'post-media' );
 
 -- Allow authenticated users to upload images
+drop policy if exists "Authenticated users can upload images" on storage.objects;
 create policy "Authenticated users can upload images"
 on storage.objects for insert
 with check (
@@ -18,6 +20,7 @@ with check (
 );
 
 -- Allow users to update/delete their own uploads (optional, good practice)
+drop policy if exists "Users can update own images" on storage.objects;
 create policy "Users can update own images"
 on storage.objects for update
 using (
@@ -25,6 +28,7 @@ using (
   and auth.uid() = owner
 );
 
+drop policy if exists "Users can delete own images" on storage.objects;
 create policy "Users can delete own images"
 on storage.objects for delete
 using (

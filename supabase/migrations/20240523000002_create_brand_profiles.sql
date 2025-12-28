@@ -12,14 +12,17 @@ create table if not exists brand_profiles (
 -- RLS Policies
 alter table brand_profiles enable row level security;
 
+drop policy if exists "Users can view their own brand profile" on brand_profiles;
 create policy "Users can view their own brand profile"
   on brand_profiles for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert their own brand profile" on brand_profiles;
 create policy "Users can insert their own brand profile"
   on brand_profiles for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update their own brand profile" on brand_profiles;
 create policy "Users can update their own brand profile"
   on brand_profiles for update
   using (auth.uid() = user_id);

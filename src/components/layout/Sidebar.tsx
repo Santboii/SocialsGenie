@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import styles from './Sidebar.module.css';
 
-import { LayoutDashboard, PenSquare, Calendar, FileText, Settings } from 'lucide-react';
+import { LayoutDashboard, PenSquare, Calendar, FileText, Settings, Repeat, Library } from 'lucide-react';
 import Image from 'next/image';
 
 interface NavItem {
@@ -19,7 +19,8 @@ interface NavItem {
 const staticNavItems: NavItem[] = [
     { label: 'Dashboard', href: '/', icon: LayoutDashboard },
     { label: 'Write Post', href: '/compose', icon: PenSquare },
-    { label: 'Calendar', href: '/calendar', icon: Calendar },
+    { label: 'Schedule', href: '/schedule', icon: Repeat },
+    { label: 'Libraries', href: '/libraries', icon: Library },
     { label: 'Posts', href: '/posts', icon: FileText },
 ];
 

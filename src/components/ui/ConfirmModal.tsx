@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import styles from './ConfirmModal.module.css';
+import Modal from './Modal';
 
 interface ConfirmModalProps {
     isOpen: boolean;
@@ -26,23 +27,14 @@ export default function ConfirmModal({
     onCancel,
     isLoading = false,
 }: ConfirmModalProps) {
-    if (!isOpen) return null;
-
     return (
-        <div className={styles.overlay} onClick={onCancel}>
-            <div
-                className={styles.modal}
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className={styles.header}>
-                    <h3 className={styles.title}>{title}</h3>
-                </div>
-
-                <div className={styles.body}>
-                    {typeof message === 'string' ? <p>{message}</p> : message}
-                </div>
-
-                <div className={styles.footer}>
+        <Modal
+            isOpen={isOpen}
+            onClose={onCancel}
+            title={title}
+            size="sm"
+            footer={
+                <>
                     <button
                         className={styles.cancelBtn}
                         onClick={onCancel}
@@ -61,8 +53,12 @@ export default function ConfirmModal({
                             confirmText
                         )}
                     </button>
-                </div>
+                </>
+            }
+        >
+            <div className={styles.message}>
+                {typeof message === 'string' ? <p>{message}</p> : message}
             </div>
-        </div>
+        </Modal>
     );
 }

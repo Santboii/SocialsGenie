@@ -1,90 +1,6 @@
-.overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 1100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    animation: fadeIn 0.2s var(--ease-out-expo);
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes scaleIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-.modal {
-    width: 100%;
-    max-width: 560px;
-    max-height: 90vh;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-2xl);
-    display: flex;
-    flex-direction: column;
-    animation: scaleIn 0.3s var(--ease-out-expo);
-    box-shadow: var(--shadow-xl), var(--shadow-glow-purple);
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-4) var(--space-6);
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.title {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.closeButton {
-    width: 36px;
-    height: 36px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 24px;
-    cursor: pointer;
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all var(--transition-fast);
-}
-
-.closeButton:hover {
-    background: var(--bg-elevated);
-    color: var(--text-primary);
-}
-
 .content {
     flex: 1;
     overflow-y: auto;
-    padding: var(--space-6);
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
@@ -241,20 +157,6 @@
     filter: invert(1);
 }
 
-.footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-3);
-    padding: var(--space-4) var(--space-6);
-    border-top: 1px solid var(--border-subtle);
-    background: var(--bg-tertiary);
-    border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
-}
-
-.footer button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
 
 @media (max-width: 640px) {
     .modal {

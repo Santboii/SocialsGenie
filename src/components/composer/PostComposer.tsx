@@ -2,11 +2,14 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { PlatformId, PLATFORMS, getCharacterLimit, Platform, MediaAttachment, generateId } from '@/types';
+import { PlatformId, PLATFORMS, getCharacterLimit, Platform, MediaAttachment, generateId, ContentLibrary } from '@/types';
 import { createPost, publishPost } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
-import { useInvalidatePosts } from '@/hooks/useQueries';
+import { useInvalidatePosts, useLibraries } from '@/hooks/useQueries';
+import { Library, Calendar as CalendarIcon, Repeat } from 'lucide-react';
+import MediaUploader from './MediaUploader';
+import AITextGenerator from './AITextGenerator';
 import styles from './Composer.module.css';
 
 type ContentMode = 'shared' | PlatformId;
@@ -23,23 +26,10 @@ export default function PostComposer() {
 
     // AI Composers State
     const [showAIPanel, setShowAIPanel] = useState(false);
-    const [aiTopic, setAiTopic] = useState('');
-    const [originalAiTopic, setOriginalAiTopic] = useState<string | null>(null);
-    const [isAiTopicOptimized, setIsAiTopicOptimized] = useState(false);
-    const [isOptimizingAiTopic, setIsOptimizingAiTopic] = useState(false);
-
-    const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
     // Platform Optimization State
     const [isOptimizing, setIsOptimizing] = useState(false);
 
-    // AI Image Generation State
-    const [showAIImagePanel, setShowAIImagePanel] = useState(false);
-    const [aiImagePrompt, setAiImagePrompt] = useState('');
-    const [originalAiImagePrompt, setOriginalAiImagePrompt] = useState<string | null>(null);
-    const [isAiImagePromptOptimized, setIsAiImagePromptOptimized] = useState(false);
-    const [isOptimizingAiImagePrompt, setIsOptimizingAiImagePrompt] = useState(false);
-    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
     // Shared content (used when not customizing per-platform)
     const [sharedContent, setSharedContent] = useState('');
@@ -61,12 +51,30 @@ export default function PostComposer() {
     const [scheduleDate, setScheduleDate] = useState('');
     const [scheduleTime, setScheduleTime] = useState('');
 
+    // Evergreen / Library Mode
+    const [postMode, setPostMode] = useState<'schedule' | 'library'>('schedule');
+    const { data: fetchedLibraries, isLoading: isLoadingLibraries } = useLibraries();
+    const [libraries, setLibraries] = useState<ContentLibrary[]>([]);
+    const [selectedLibraryId, setSelectedLibraryId] = useState('');
+    const [isEvergreen, setIsEvergreen] = useState(true); // Default true for library posts
+
+    useEffect(() => {
+        if (fetchedLibraries) {
+            setLibraries(fetchedLibraries as ContentLibrary[]);
+        }
+    }, [fetchedLibraries]);
+
     // Image upload
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-    const [isDragging, setIsDragging] = useState(false);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+    // Sync previews for Live Preview section
+    useEffect(() => {
+        const newPreviews = selectedImages.map(file => URL.createObjectURL(file));
+        setImagePreviews(newPreviews);
+        return () => newPreviews.forEach(url => URL.revokeObjectURL(url));
+    }, [selectedImages]);
 
     // Handle initial params from AI Composer (Legacy support for external redirects if any)
     useEffect(() => {
@@ -91,7 +99,7 @@ export default function PostComposer() {
                     .then(blob => {
                         const file = new File([blob], "generated-image.png", { type: "image/png" });
                         setSelectedImages(prev => [...prev, file]);
-                        setImagePreviews(prev => [...prev, url]);
+                        // Preview will handle itself via useEffect
                     })
                     .catch(err => console.error("Failed to load generated image", err));
             };
@@ -202,152 +210,7 @@ export default function PostComposer() {
         }
     };
 
-    // AI Generation Handler
-    const handleAIGenerate = async () => {
-        if (!aiTopic) return;
 
-        setIsGeneratingAI(true);
-        setError(null);
-
-        try {
-            // Determine platform context: if specific tab, use that; else use first selected or twitter default
-            const targetPlatform = activeTab !== 'shared' ? activeTab : (selectedPlatforms[0] || 'twitter');
-
-            const response = await fetch('/api/ai/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    topic: aiTopic,
-                    platform: targetPlatform,
-
-                })
-            });
-
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.error || 'Failed to generate');
-            }
-
-            const data = await response.json();
-
-            // Update content
-            handleContentChange(data.post.content);
-
-            // Handle Image
-            if (data.imageUrl) {
-                const imgRes = await fetch(data.imageUrl);
-                const blob = await imgRes.blob();
-                const file = new File([blob], "ai-generated.png", { type: "image/png" });
-
-                // Add to images
-                const max = getMaxMedia();
-                if (selectedImages.length < max) {
-                    setSelectedImages(prev => [...prev, file]);
-                    setImagePreviews(prev => [...prev, data.imageUrl]); // data.imageUrl is a public URL usually, or base64? 
-                    // Note: If using blob from internal AI route, make sure it's accessible. 
-                    // If the AI route returns a remote URL, we can use it directly in preview, 
-                    // but we fetched it to blob to unify 'File' handling.
-                    // For preview consistency, create object URL from the blob we just fetched
-                    const objectUrl = URL.createObjectURL(blob);
-                    // Replace the remote URL in previews with local object URL to be safe
-                    setImagePreviews(prev => {
-                        const newPreviews = [...prev];
-                        newPreviews[newPreviews.length - 1] = objectUrl;
-                        return newPreviews;
-                    });
-                }
-            }
-
-            // Close AI panel or indicate success?
-            // Let's keep it open but maybe show a visual cue or just the result in the editor is enough.
-            // Collapsing panel for better UX
-            setShowAIPanel(false);
-            setAiTopic(''); // Clear topic or keep it? Keeping it allows refinement if we didn't close.
-            // Since we close, clearing might be annoying if they want to re-open and edit.
-            // Let's keep topic state but clear it only on manual clear.
-
-        } catch (error: any) {
-            console.error('Generation failed', error);
-            setError(error.message || 'Failed to generate post.');
-        } finally {
-            setIsGeneratingAI(false);
-        }
-    };
-
-    // AI Topic Prompt Optimization Handler
-    const handleOptimizeAiTopic = async () => {
-        if (!aiTopic || isOptimizingAiTopic) return;
-
-        setIsOptimizingAiTopic(true);
-        try {
-            const targetPlatform = activeTab !== 'shared' ? activeTab : (selectedPlatforms[0] || 'twitter');
-            const response = await fetch('/api/ai/optimize-prompt', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: aiTopic, platform: targetPlatform })
-            });
-
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.error || 'Failed to optimize');
-            }
-
-            const data = await response.json();
-            setOriginalAiTopic(aiTopic);
-            setAiTopic(data.optimizedPrompt);
-            setIsAiTopicOptimized(true);
-        } catch (error: any) {
-            console.error('Topic optimization failed', error);
-            setError(error.message || 'Failed to optimize prompt');
-        } finally {
-            setIsOptimizingAiTopic(false);
-        }
-    };
-
-    const handleRevertAiTopic = () => {
-        if (originalAiTopic) {
-            setAiTopic(originalAiTopic);
-            setOriginalAiTopic(null);
-            setIsAiTopicOptimized(false);
-        }
-    };
-
-    // AI Image Prompt Optimization Handler
-    const handleOptimizeAiImagePrompt = async () => {
-        if (!aiImagePrompt || isOptimizingAiImagePrompt) return;
-
-        setIsOptimizingAiImagePrompt(true);
-        try {
-            const response = await fetch('/api/ai/optimize-prompt', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: aiImagePrompt })
-            });
-
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.error || 'Failed to optimize');
-            }
-
-            const data = await response.json();
-            setOriginalAiImagePrompt(aiImagePrompt);
-            setAiImagePrompt(data.optimizedPrompt);
-            setIsAiImagePromptOptimized(true);
-        } catch (error: any) {
-            console.error('Image prompt optimization failed', error);
-            setError(error.message || 'Failed to optimize prompt');
-        } finally {
-            setIsOptimizingAiImagePrompt(false);
-        }
-    };
-
-    const handleRevertAiImagePrompt = () => {
-        if (originalAiImagePrompt) {
-            setAiImagePrompt(originalAiImagePrompt);
-            setOriginalAiImagePrompt(null);
-            setIsAiImagePromptOptimized(false);
-        }
-    };
 
     // Platform Optimization Handler
     const handleOptimize = async () => {
@@ -387,52 +250,7 @@ export default function PostComposer() {
         }
     };
 
-    // AI Image Generation Handler
-    const handleAIImageGenerate = async () => {
-        const prompt = aiImagePrompt.trim() || sharedContent.trim();
-        if (!prompt) {
-            setError('Enter an image prompt or write some post content first');
-            return;
-        }
 
-        setIsGeneratingImage(true);
-        setError(null);
-
-        try {
-            const response = await fetch('/api/ai/generate-image', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
-            });
-
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.error || 'Failed to generate image');
-            }
-
-            const data = await response.json();
-
-            // Fetch the image and add it
-            const imgRes = await fetch(data.imageUrl);
-            const blob = await imgRes.blob();
-            const file = new File([blob], "ai-generated.png", { type: "image/png" });
-
-            const max = getMaxMedia();
-            if (selectedImages.length < max) {
-                setSelectedImages(prev => [...prev, file]);
-                const objectUrl = URL.createObjectURL(blob);
-                setImagePreviews(prev => [...prev, objectUrl]);
-            }
-
-            setShowAIImagePanel(false);
-            setAiImagePrompt('');
-        } catch (error: any) {
-            console.error('Image generation failed', error);
-            setError(error.message || 'Failed to generate image.');
-        } finally {
-            setIsGeneratingImage(false);
-        }
-    };
 
     // Check if a platform has custom content (different from shared)
     const hasCustomContent = (platformId: PlatformId): boolean => {
@@ -484,64 +302,7 @@ export default function PostComposer() {
         return null;
     };
 
-    // Image upload handlers
-    const handleFileSelect = (files: FileList | null) => {
-        if (!files) return;
 
-        const imageFiles = Array.from(files).filter(file =>
-            file.type.startsWith('image/')
-        );
-
-        if (imageFiles.length === 0) return;
-
-        const max = getMaxMedia();
-        const currentCount = selectedImages.length;
-        const newCount = currentCount + imageFiles.length;
-
-        // If trying to add more than allowed global max (10 for FB/Insta)
-        if (newCount > 10) {
-            setError(`Cannot upload more than 10 images total`);
-            return;
-        }
-
-        // Warning if exceeding platform limits
-        if (newCount > max) {
-            setError(`Note: Some selected platforms only support ${max} images`);
-        } else {
-            setError(null);
-        }
-
-        const newImages = [...selectedImages, ...imageFiles];
-        setSelectedImages(newImages);
-
-        // Generate previews
-        const newPreviews = newImages.map(file => URL.createObjectURL(file));
-        // Clean up old previews
-        imagePreviews.forEach(url => URL.revokeObjectURL(url));
-        setImagePreviews(newPreviews);
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(false);
-        handleFileSelect(e.dataTransfer.files);
-    };
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
-
-    const handleDragLeave = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(false);
-    };
-
-    const removeImage = (index: number) => {
-        URL.revokeObjectURL(imagePreviews[index]);
-        setSelectedImages(prev => prev.filter((_, i) => i !== index));
-        setImagePreviews(prev => prev.filter((_, i) => i !== index));
-    };
 
     const getCharStatus = (content: string, platformId: PlatformId): 'ok' | 'warning' | 'error' => {
         const limit = getCharacterLimit(platformId);
@@ -607,7 +368,13 @@ export default function PostComposer() {
         if (mediaError) return mediaError;
 
         if (hasAnyError()) return 'Fix character limit errors first';
-        if (scheduleEnabled && !canSchedule) return 'Select date and time';
+
+        if (postMode === 'schedule') {
+            if (scheduleEnabled && !canSchedule) return 'Select date and time';
+        } else {
+            if (!selectedLibraryId) return 'Select a library';
+        }
+
         return undefined;
     };
 
@@ -666,7 +433,16 @@ export default function PostComposer() {
             // 3. If 'draft', create as 'draft'.
 
             const initialStatus = targetStatus === 'published' ? 'draft' : targetStatus;
-            const scheduledAt = targetStatus === 'scheduled' ? getScheduledDateTime() : undefined;
+
+            // If library mode, we just save as draft (or published if we want it immediately available for recycling, 
+            // but usually it waits for the slot). 'draft' is safer for "queued". 
+            // Actually, if it's evergreen, it can be 'published' status but is_evergreen=true.
+            // But for a new post that hasn't gone out yet, 'draft' + library_id is correct. 
+            // The Cron job picks it up. 
+
+            const scheduledAt = (postMode === 'schedule' && targetStatus === 'scheduled')
+                ? getScheduledDateTime()
+                : undefined;
 
             const post = await createPost({
                 content: sharedContent,
@@ -675,6 +451,8 @@ export default function PostComposer() {
                 scheduledAt,
                 platformContent,
                 media: uploadedMedia,
+                libraryId: postMode === 'library' ? selectedLibraryId : undefined,
+                isEvergreen: postMode === 'library' ? isEvergreen : false,
             });
 
             if (targetStatus === 'published') {
@@ -812,108 +590,22 @@ export default function PostComposer() {
                             className={styles.floatingAIButton}
                             onClick={() => {
                                 setShowAIPanel(!showAIPanel);
-                                setShowAIImagePanel(false);
                             }}
                             title="Magic Compose with AI"
                         >
                             ✨
                         </button>
 
-                        {/* AI Popover - emerges from button */}
+                        {/* AI Popover */}
                         {showAIPanel && (
-                            <div
-                                className={styles.aiPopoverFromButton}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <div className={styles.aiPopoverHeader}>
-                                    <h3 className={styles.aiPopoverTitle}>
-                                        <span>✨</span> AI Text
-                                    </h3>
-                                    <button
-                                        onClick={() => setShowAIPanel(false)}
-                                        className={styles.aiPopoverClose}
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-
-                                <div className={styles.aiPopoverBody}>
-                                    <div>
-                                        <label className={styles.aiPopoverLabel}>
-                                            What would you like to post about?
-                                        </label>
-                                        <textarea
-                                            value={aiTopic}
-                                            onChange={(e) => {
-                                                setAiTopic(e.target.value);
-                                                if (isAiTopicOptimized) {
-                                                    setIsAiTopicOptimized(false);
-                                                    setOriginalAiTopic(null);
-                                                }
-                                            }}
-                                            className={`${styles.aiPopoverTextarea} ${isAiTopicOptimized ? styles.optimizedTextarea : ''}`}
-                                            placeholder="e.g., Announcing our summer collection..."
-                                            autoFocus
-                                        />
-                                        <div className={styles.optimizeRow}>
-                                            <button
-                                                onClick={handleOptimizeAiTopic}
-                                                disabled={!aiTopic || isOptimizingAiTopic || isAiTopicOptimized}
-                                                className={styles.optimizeBtnSecondary}
-                                                type="button"
-                                            >
-                                                {isOptimizingAiTopic ? (
-                                                    <>
-                                                        <span className={styles.spinner} />
-                                                        <span>Optimizing...</span>
-                                                    </>
-                                                ) : isAiTopicOptimized ? (
-                                                    <>
-                                                        <span>✨</span>
-                                                        <span>Prompt optimized</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <span>✨</span>
-                                                        <span>Optimize Prompt</span>
-                                                    </>
-                                                )}
-                                            </button>
-                                            {isAiTopicOptimized && originalAiTopic && (
-                                                <button
-                                                    onClick={handleRevertAiTopic}
-                                                    className={styles.revertBtn}
-                                                    type="button"
-                                                >
-                                                    ↩ Revert
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className={styles.aiPopoverActions}>
-
-
-                                        <button
-                                            onClick={handleAIGenerate}
-                                            disabled={isGeneratingAI || !aiTopic}
-                                            className={styles.aiPopoverSubmit}
-                                        >
-                                            {isGeneratingAI ? (
-                                                <>
-                                                    <span className={styles.spinner} />
-                                                    <span>Generating...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span>✨</span>
-                                                    <span>Generate</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                            <AITextGenerator
+                                onClose={() => setShowAIPanel(false)}
+                                onGenerate={(content) => {
+                                    handleContentChange(content);
+                                    // We could also handle image here if AITextGen supported it
+                                }}
+                                platform={activeTab === 'shared' ? (selectedPlatforms[0] || 'twitter') : activeTab}
+                            />
                         )}
                     </div>
 
@@ -940,174 +632,14 @@ export default function PostComposer() {
                         </div>
                     )}
 
-                    {/* Image Upload Dropzone - Hidden for X tab */}
-                    {activeTab !== 'twitter' && (
-                        <div
-                            className={`${styles.mediaDropzone} ${isDragging ? styles.dragging : ''} ${selectedImages.length > 0 ? styles.hasImages : ''}`}
-                            onClick={() => fileInputRef.current?.click()}
-                            onDrop={handleDrop}
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                        >
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={(e) => handleFileSelect(e.target.files)}
-                                style={{ display: 'none' }}
-                            />
-
-                            {selectedImages.length === 0 ? (
-                                <>
-                                    <div className={styles.dropzoneContent}>
-                                        <span className={styles.dropzoneIcon}>📷</span>
-                                        <span className={styles.dropzoneText}>Click or drag images here</span>
-                                        <span className={styles.dropzoneHint}>Up to 4 images</span>
-                                    </div>
-
-                                    {/* Floating AI button in corner - same pattern as textarea */}
-                                    <button
-                                        type="button"
-                                        className={styles.floatingAIButton}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowAIImagePanel(!showAIImagePanel);
-                                            setShowAIPanel(false);
-                                        }}
-                                        title="Generate an image with AI"
-                                    >
-                                        ✨
-                                    </button>
-
-                                    {/* AI Image Popover - emerges from button */}
-                                    {showAIImagePanel && (
-                                        <div
-                                            className={styles.aiPopoverFromButton}
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <div className={styles.aiPopoverHeader}>
-                                                <h3 className={styles.aiPopoverTitle}>
-                                                    <span>🖼️</span> AI Image
-                                                </h3>
-                                                <button
-                                                    onClick={() => setShowAIImagePanel(false)}
-                                                    className={styles.aiPopoverClose}
-                                                >
-                                                    ✕
-                                                </button>
-                                            </div>
-
-                                            <div className={styles.aiPopoverBody}>
-                                                <div>
-                                                    <label className={styles.aiPopoverLabel}>
-                                                        Describe your image
-                                                    </label>
-                                                    <textarea
-                                                        value={aiImagePrompt}
-                                                        onChange={(e) => {
-                                                            setAiImagePrompt(e.target.value);
-                                                            if (isAiImagePromptOptimized) {
-                                                                setIsAiImagePromptOptimized(false);
-                                                                setOriginalAiImagePrompt(null);
-                                                            }
-                                                        }}
-                                                        className={`${styles.aiPopoverTextarea} ${isAiImagePromptOptimized ? styles.optimizedTextarea : ''}`}
-                                                        placeholder={sharedContent ? "Leave blank to use post content" : "A vibrant photo of..."}
-                                                        autoFocus
-                                                    />
-                                                    <div className={styles.optimizeRow}>
-                                                        <button
-                                                            onClick={handleOptimizeAiImagePrompt}
-                                                            disabled={!aiImagePrompt || isOptimizingAiImagePrompt || isAiImagePromptOptimized}
-                                                            className={styles.optimizeBtnSecondary}
-                                                            type="button"
-                                                        >
-                                                            {isOptimizingAiImagePrompt ? (
-                                                                <>
-                                                                    <span className={styles.spinner} />
-                                                                    <span>Optimizing...</span>
-                                                                </>
-                                                            ) : isAiImagePromptOptimized ? (
-                                                                <>
-                                                                    <span>✨</span>
-                                                                    <span>Prompt optimized</span>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <span>✨</span>
-                                                                    <span>Optimize Prompt</span>
-                                                                </>
-                                                            )}
-                                                        </button>
-                                                        {isAiImagePromptOptimized && originalAiImagePrompt && (
-                                                            <button
-                                                                onClick={handleRevertAiImagePrompt}
-                                                                className={styles.revertBtn}
-                                                                type="button"
-                                                            >
-                                                                ↩ Revert
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <button
-                                                    onClick={handleAIImageGenerate}
-                                                    disabled={isGeneratingImage}
-                                                    className={styles.aiPopoverSubmit}
-                                                    style={{ width: '100%' }}
-                                                >
-                                                    {isGeneratingImage ? (
-                                                        <>
-                                                            <span className={styles.spinner} />
-                                                            <span>Generating...</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <span>🖼️</span>
-                                                            <span>Generate Image</span>
-                                                        </>
-                                                    )}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
-                                <div className={styles.imagePreviewGrid}>
-                                    {imagePreviews.map((preview, index) => (
-                                        <div key={index} className={styles.imagePreviewItem}>
-                                            <img
-                                                src={preview}
-                                                alt={`Preview ${index + 1}`}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setPreviewImage(preview);
-                                                }}
-                                                style={{ cursor: 'pointer' }}
-                                            />
-                                            <button
-                                                type="button"
-                                                className={styles.removeImageBtn}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    removeImage(index);
-                                                }}
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {selectedImages.length < 4 && (
-                                        <div className={styles.addMoreImages}>
-                                            <span>+</span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    {/* Image Upload Dropzone */}
+                    <MediaUploader
+                        files={selectedImages}
+                        onFilesChange={setSelectedImages}
+                        maxMedia={getMaxMedia()}
+                        disabled={isSubmitting}
+                        sharedContent={sharedContent}
+                    />
 
                     {/* X Media Warning - shown only when images are uploaded and X is selected */}
                     {selectedPlatforms.includes('twitter') && selectedImages.length > 0 && (
@@ -1117,46 +649,110 @@ export default function PostComposer() {
                         </div>
                     )}
 
-                    {/* Schedule Section */}
+                    {/* Publishing Options Section */}
                     <div className={styles.scheduleSection}>
-                        <div className={styles.scheduleHeader}>
-                            <label className={styles.scheduleToggle}>
-                                <input
-                                    type="checkbox"
-                                    checked={scheduleEnabled}
-                                    onChange={(e) => setScheduleEnabled(e.target.checked)}
-                                />
-                                <span className={styles.scheduleToggleSlider}></span>
-                                <span className={styles.scheduleLabel}>📅 Schedule for later</span>
-                            </label>
+                        <div className={styles.modeToggleHeader}>
+                            <button
+                                type="button"
+                                className={`${styles.modeBtn} ${postMode === 'schedule' ? styles.modeBtnActive : ''}`}
+                                onClick={() => setPostMode('schedule')}
+                            >
+                                <CalendarIcon size={16} />
+                                <span>Schedule Once</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`${styles.modeBtn} ${postMode === 'library' ? styles.modeBtnActive : ''}`}
+                                onClick={() => setPostMode('library')}
+                            >
+                                <Library size={16} />
+                                <span>Add to Queue</span>
+                            </button>
                         </div>
 
-                        {scheduleEnabled && (
-                            <div className={styles.schedulePicker}>
-                                <div className={styles.scheduleInputGroup}>
-                                    <label>Date</label>
-                                    <input
-                                        type="date"
-                                        className={styles.scheduleInput}
-                                        value={scheduleDate}
-                                        onChange={(e) => setScheduleDate(e.target.value)}
-                                        min={getMinDate()}
-                                    />
+                        {postMode === 'schedule' ? (
+                            <div className={styles.scheduleOptions}>
+                                <div className={styles.scheduleHeader}>
+                                    <label className={styles.scheduleToggle}>
+                                        <input
+                                            type="checkbox"
+                                            checked={scheduleEnabled}
+                                            onChange={(e) => setScheduleEnabled(e.target.checked)}
+                                        />
+                                        <span className={styles.scheduleToggleSlider}></span>
+                                        <span className={styles.scheduleLabel}>📅 Schedule for specific time</span>
+                                    </label>
                                 </div>
-                                <div className={styles.scheduleInputGroup}>
-                                    <label>Time</label>
-                                    <input
-                                        type="time"
-                                        className={styles.scheduleInput}
-                                        value={scheduleTime}
-                                        onChange={(e) => setScheduleTime(e.target.value)}
-                                    />
-                                </div>
-                                {scheduleDate && scheduleTime && (
-                                    <div className={styles.schedulePreview}>
-                                        🕐 {formatSchedulePreview()}
+
+                                {scheduleEnabled && (
+                                    <div className={styles.schedulePicker}>
+                                        <div className={styles.scheduleInputGroup}>
+                                            <label>Date</label>
+                                            <input
+                                                type="date"
+                                                className={styles.scheduleInput}
+                                                value={scheduleDate}
+                                                onChange={(e) => setScheduleDate(e.target.value)}
+                                                min={getMinDate()}
+                                            />
+                                        </div>
+                                        <div className={styles.scheduleInputGroup}>
+                                            <label>Time</label>
+                                            <input
+                                                type="time"
+                                                className={styles.scheduleInput}
+                                                value={scheduleTime}
+                                                onChange={(e) => setScheduleTime(e.target.value)}
+                                            />
+                                        </div>
+                                        {scheduleDate && scheduleTime && (
+                                            <div className={styles.schedulePreview}>
+                                                🕐 {formatSchedulePreview()}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
+                            </div>
+                        ) : (
+                            <div className={styles.libraryOptions}>
+                                <div className={styles.libraryPickerGroup}>
+                                    <label className={styles.optionLabel}>Choose Library</label>
+                                    <select
+                                        className={styles.librarySelect}
+                                        value={selectedLibraryId}
+                                        onChange={(e) => setSelectedLibraryId(e.target.value)}
+                                    >
+                                        <option value="" disabled>Select a library...</option>
+                                        {libraries.map(lib => (
+                                            <option key={lib.id} value={lib.id}>
+                                                {lib.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {libraries.length === 0 && (
+                                        <div className={styles.noLibHint}>
+                                            <a href="/libraries" target="_blank" className={styles.createLibLink}>
+                                                + Create a library first
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className={styles.evergreenToggle}>
+                                    <label className={styles.checkboxLabel}>
+                                        <input
+                                            type="checkbox"
+                                            checked={isEvergreen}
+                                            onChange={(e) => setIsEvergreen(e.target.checked)}
+                                        />
+                                        <div className={styles.checkboxText}>
+                                            <span className={styles.checkboxTitle}>♻️ Recycle Indefinitely</span>
+                                            <span className={styles.checkboxDesc}>
+                                                Post will stay in the queue and cycle (Auto-Remix supported)
+                                            </span>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
                         )}
                     </div>

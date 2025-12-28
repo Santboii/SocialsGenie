@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { PlatformId, ToneType, PLATFORMS } from '@/types';
-import { generatePosts, fetchUrlContent } from '@/lib/ai';
 import { addSuggestion, getPosts } from '@/lib/storage';
 import styles from './AIComposeModal.module.css';
 
@@ -47,24 +46,60 @@ export default function AIComposeModal({ isOpen, onClose, onGenerated }: AICompo
                 .slice(0, 5)
                 .map(p => p.content);
 
-            // Fetch URL content if provided
-            let urlContent: string | undefined;
-            if (sourceUrl.trim()) {
-                try {
-                    urlContent = await fetchUrlContent(sourceUrl);
-                } catch {
-                    console.warn('Could not fetch URL content');
+            // URL content collection would go here if we re-implement it server side or with a new helper
+            // For now, we rely on the topic and title only
+            const urlContent = undefined;
+
+            // The backend now expects a single platform string, not an array.
+            // We'll generate for each selected platform individually or just pick the first one for now
+            // since the API route structure suggests singular generation.
+            // However, the previous code implies multi-platform generation.
+            // Let's iterate sequentially for now to support the UI's promise of multi-platform.
+
+            const newVariants = [];
+
+            for (const platformId of selectedPlatforms) {
+
+                const res = await fetch('/api/ai/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        topic,
+                        platform: platformId,
+                        includeImage: false // Suggestions page doesn't seem to ask for images here explicitly yet
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || `Failed for ${platformId}`);
                 }
+
+                const data = await res.json();
+                newVariants.push({
+                    platformId,
+                    content: data.post.content
+                });
             }
 
-            const suggestion = await generatePosts({
+            const suggestion = {
+                id: crypto.randomUUID(), // using native crypto for client-side ID
                 topic,
                 tone,
-                platforms: selectedPlatforms,
-                sourceUrl: sourceUrl || undefined,
-                urlContent,
-                pastPosts,
-            });
+                sourceUrl,
+                variants: newVariants,
+                status: 'pending' as const,
+                createdAt: new Date().toISOString()
+            };
+
+            // Previous logic: generatePosts was likely client-side aggregator or wrapped multiple calls?
+            // Since we replaced the single-call wrapper, we construct the suggestion object manually here
+            // to pass to addSuggestion.
+
+            // Wait, looking at lines 60-67 in original file, it was calling `generatePosts` from `@/lib/ai`.
+            // If I delete `@/lib/ai.ts`, I must inline that logic here or create a new proper service.
+            // Inlining is safer for now to ensure we hit the correct API route we verified.
+
 
             addSuggestion(suggestion);
             onGenerated();

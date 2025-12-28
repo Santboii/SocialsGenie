@@ -17,7 +17,7 @@ export async function DELETE() {
         // Create admin client for deleting data
         const supabaseAdmin = createAdminClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SECRET_KEY!
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
         // 2. Delete all user data
