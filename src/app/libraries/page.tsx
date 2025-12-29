@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { Plus, Library as LibraryIcon, FileText, Sparkles, ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
 import styles from './Libraries.module.css';
-import { ContentLibrary, LIBRARY_TEMPLATES, LibraryTemplate, LibraryTemplateType } from '@/types';
+import { ContentLibrary, LIBRARY_TEMPLATES, LibraryTemplate, LibraryTemplateType, PLATFORMS, PlatformId } from '@/types';
 import Modal from '@/components/ui/Modal';
 import LibraryTemplates from '@/components/libraries/LibraryTemplates';
+import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 
 const PRESET_COLORS = [
     '#6366f1', '#ec4899', '#10b981', '#f59e0b',
@@ -20,10 +22,22 @@ interface GeneratedPost {
     content: string;
 }
 
+const fetchLibraries = async () => {
+    const res = await fetch('/api/libraries');
+    if (!res.ok) throw new Error('Failed to fetch libraries');
+    return res.json();
+};
+
 export default function LibrariesPage() {
     const router = useRouter();
-    const [libraries, setLibraries] = useState<(ContentLibrary & { post_count?: number })[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+
+    // React Query for Caching
+    const { data: libraries = [], isLoading, refetch } = useQuery<(ContentLibrary & { post_count?: number })[]>({
+        queryKey: ['libraries'],
+        queryFn: fetchLibraries,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Wizard State
@@ -33,31 +47,45 @@ export default function LibrariesPage() {
     // Form State
     const [name, setName] = useState('');
     const [topicPrompt, setTopicPrompt] = useState('');
+    const [platforms, setPlatforms] = useState<PlatformId[]>([]);
     const [color, setColor] = useState(PRESET_COLORS[0]);
     const [autoRemix, setAutoRemix] = useState(true);
     const [generateImages, setGenerateImages] = useState(false);
+
+    // AI Settings State
+    const [tone, setTone] = useState('Professional');
+    const [length, setLength] = useState('medium');
+    const [language, setLanguage] = useState('English');
+    const [audience, setAudience] = useState('');
+    const [hashtagStrategy, setHashtagStrategy] = useState('none');
+
     const [editingLibraryId, setEditingLibraryId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Generated Posts State
     const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
     const [newLibraryId, setNewLibraryId] = useState<string | null>(null);
+    const [isOptimizing, setIsOptimizing] = useState(false);
 
-    useEffect(() => {
-        fetchLibraries();
-    }, []);
+    const handleOptimizePrompt = async () => {
+        if (!topicPrompt.trim() || isOptimizing) return;
 
-    const fetchLibraries = async () => {
+        setIsOptimizing(true);
         try {
-            const res = await fetch('/api/libraries');
-            if (res.ok) {
-                const data = await res.json();
-                setLibraries(data);
-            }
+            const response = await fetch('/api/ai/optimize-prompt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: topicPrompt, platform: 'general' })
+            });
+
+            if (!response.ok) throw new Error('Failed to optimize');
+
+            const data = await response.json();
+            setTopicPrompt(data.optimizedPrompt);
         } catch (error) {
-            console.error('Failed to fetch libraries', error);
+            console.error('Failed to optimize prompt:', error);
         } finally {
-            setIsLoading(false);
+            setIsOptimizing(false);
         }
     };
 
@@ -66,9 +94,15 @@ export default function LibrariesPage() {
         setSelectedTemplate(null);
         setName('');
         setTopicPrompt('');
+        setPlatforms([]);
         setColor(PRESET_COLORS[0]);
         setAutoRemix(true);
         setGenerateImages(false);
+        setTone('Professional');
+        setLength('medium');
+        setLanguage('English');
+        setAudience('');
+        setHashtagStrategy('none');
         setEditingLibraryId(null);
         setGeneratedPosts([]);
         setNewLibraryId(null);
@@ -91,6 +125,17 @@ export default function LibrariesPage() {
         setTopicPrompt(lib.topic_prompt || '');
         setAutoRemix(lib.auto_remix);
         setGenerateImages(lib.generate_images || false);
+
+        // Populate AI Settings
+        const settings = lib.ai_settings || {};
+        setTone(settings.tone || 'Professional');
+        setLength(settings.length || 'medium');
+        setLanguage(settings.language || 'English');
+        setLanguage(settings.language || 'English');
+        setAudience(settings.audience || '');
+        setHashtagStrategy(settings.hashtag_strategy || 'none');
+        setPlatforms(lib.platforms || []);
+
         setEditingLibraryId(lib.id);
         setWizardStep('details');
         setIsModalOpen(true);
@@ -124,11 +169,20 @@ export default function LibrariesPage() {
                 body: JSON.stringify({
                     name,
                     color,
+                    platforms,
                     is_paused: false,
                     auto_remix: autoRemix,
                     generate_images: generateImages,
                     topic_prompt: topicPrompt,
-                    template_type: selectedTemplate || 'custom'
+                    template_type: selectedTemplate || 'custom',
+                    ai_settings: {
+                        tone,
+                        length,
+                        language,
+                        audience,
+                        hashtag_strategy: hashtagStrategy,
+                        use_emojis: true // Defaulting to true for now
+                    }
                 }),
             });
 
@@ -172,7 +226,7 @@ export default function LibrariesPage() {
                 // No topic, just finish
                 setIsModalOpen(false);
                 resetForm();
-                fetchLibraries();
+                refetch();
             }
         } catch (error) {
             console.error('Failed to create library:', error);
@@ -185,7 +239,7 @@ export default function LibrariesPage() {
     const handleFinish = () => {
         setIsModalOpen(false);
         resetForm();
-        fetchLibraries();
+        refetch();
     };
 
     const handleUpdateLibrary = async () => {
@@ -200,17 +254,26 @@ export default function LibrariesPage() {
                     id: editingLibraryId,
                     name,
                     color,
+                    platforms,
                     is_paused: false,
                     auto_remix: autoRemix,
                     generate_images: generateImages,
                     topic_prompt: topicPrompt,
+                    ai_settings: {
+                        tone,
+                        length,
+                        language,
+                        audience,
+                        hashtag_strategy: hashtagStrategy,
+                        use_emojis: true
+                    }
                 }),
             });
 
             if (res.ok) {
                 setIsModalOpen(false);
                 resetForm();
-                fetchLibraries();
+                refetch();
             }
         } catch (error) {
             console.error('Failed to update library:', error);
@@ -266,6 +329,117 @@ export default function LibrariesPage() {
                                 value={topicPrompt}
                                 onChange={e => setTopicPrompt(e.target.value)}
                                 rows={3}
+                            />
+                            <div className={styles.inputActions}>
+                                <button
+                                    className={styles.optimizeBtn}
+                                    onClick={handleOptimizePrompt}
+                                    disabled={!topicPrompt.trim() || isOptimizing}
+                                    type="button"
+                                >
+                                    {isOptimizing ? (
+                                        <>
+                                            <Loader2 size={14} className={styles.spinnerIcon} />
+                                            Optimizing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles size={14} />
+                                            Optimize prompt
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>
+                                Authorized Platforms
+                                <span className={styles.labelHint}>AI will create variants for these</span>
+                            </label>
+                            <div className={styles.platformGrid}>
+                                {PLATFORMS.map(p => (
+                                    <button
+                                        key={p.id}
+                                        className={`${styles.platformBtn} ${platforms.includes(p.id) ? styles.active : ''}`}
+                                        onClick={() => setPlatforms(prev =>
+                                            prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id]
+                                        )}
+                                    >
+                                        <span className={styles.platformIcon} style={{ color: platforms.includes(p.id) ? p.color : 'inherit' }}>
+                                            {p.icon}
+                                        </span>
+                                        {p.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className={styles.formRow}>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Tone</label>
+                                <select
+                                    className={styles.select}
+                                    value={tone}
+                                    onChange={e => setTone(e.target.value)}
+                                >
+                                    <option value="Professional">Professional</option>
+                                    <option value="Casual">Casual</option>
+                                    <option value="Funny">Funny</option>
+                                    <option value="Inspirational">Inspirational</option>
+                                    <option value="Edgy">Edgy</option>
+                                </select>
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Post Length</label>
+                                <select
+                                    className={styles.select}
+                                    value={length}
+                                    onChange={e => setLength(e.target.value)}
+                                >
+                                    <option value="short">Short</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="long">Long</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className={styles.formRow}>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Language</label>
+                                <select
+                                    className={styles.select}
+                                    value={language}
+                                    onChange={e => setLanguage(e.target.value)}
+                                >
+                                    <option value="English">English</option>
+                                    <option value="Spanish">Spanish</option>
+                                    <option value="French">French</option>
+                                    <option value="German">German</option>
+                                    <option value="Portuguese">Portuguese</option>
+                                </select>
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Hashtags</label>
+                                <select
+                                    className={styles.select}
+                                    value={hashtagStrategy}
+                                    onChange={e => setHashtagStrategy(e.target.value)}
+                                >
+                                    <option value="none">None</option>
+                                    <option value="auto">Auto-Generate</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>Target Audience</label>
+                            <input
+                                type="text"
+                                className={styles.input}
+                                placeholder="e.g. Small business owners, Gamers, etc."
+                                value={audience}
+                                onChange={e => setAudience(e.target.value)}
                             />
                         </div>
 
@@ -457,6 +631,29 @@ export default function LibrariesPage() {
                                 <p className={styles.topicPrompt}>{lib.topic_prompt}</p>
                             )}
 
+                            {/* Platform Icons */}
+                            {lib.platforms && lib.platforms.length > 0 && (
+                                <div className={styles.platformRow}>
+                                    {lib.platforms.map(pid => {
+                                        const p = PLATFORMS.find(pl => pl.id === pid);
+                                        return p ? (
+                                            <div
+                                                key={pid}
+                                                className={styles.platformIconWrapper}
+                                                title={p.name}
+                                                style={{
+                                                    color: p.color,
+                                                    borderColor: p.color + '40',
+                                                    backgroundColor: p.color + '10'
+                                                }}
+                                            >
+                                                {getPlatformIcon(pid, 16)}
+                                            </div>
+                                        ) : null;
+                                    })}
+                                </div>
+                            )}
+
                             <div className={styles.postCount}>
                                 <FileText size={16} />
                                 <span>{lib.post_count || 0} posts</span>
@@ -477,6 +674,7 @@ export default function LibrariesPage() {
                 onClose={() => { setIsModalOpen(false); resetForm(); }}
                 title={getModalTitle()}
                 footer={renderModalFooter()}
+                className={styles.libraryModal}
             >
                 {renderWizardContent()}
             </Modal>

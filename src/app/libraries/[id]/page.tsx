@@ -20,12 +20,6 @@ export default function LibraryDetailPage() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Editing state
-    const [isEditing, setIsEditing] = useState(false);
-    const [editName, setEditName] = useState('');
-    const [editTopic, setEditTopic] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
-
     // AI Settings Modal
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -52,43 +46,7 @@ export default function LibraryDetailPage() {
         }
     };
 
-    const handleStartEdit = () => {
-        if (!library) return;
-        setEditName(library.name);
-        setEditTopic(library.topic_prompt || '');
-        setIsEditing(true);
-    };
-
-    const handleCancelEdit = () => {
-        setIsEditing(false);
-    };
-
-    const handleSaveEdit = async () => {
-        if (!library || !editName.trim()) return;
-
-        setIsSaving(true);
-        try {
-            const res = await fetch(`/api/libraries/${library.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: editName.trim(),
-                    topic_prompt: editTopic.trim(),
-                }),
-            });
-
-            if (res.ok) {
-                setLibrary({ ...library, name: editName.trim(), topic_prompt: editTopic.trim() });
-                setIsEditing(false);
-            }
-        } catch (error) {
-            console.error('Failed to save:', error);
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handleSaveAiSettings = async (settings: LibraryAiSettings, platforms: PlatformId[]) => {
+    const handleSaveAiSettings = async (name: string, topic: string, settings: LibraryAiSettings, platforms: PlatformId[]) => {
         if (!library) return;
 
         try {
@@ -96,13 +54,21 @@ export default function LibraryDetailPage() {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    name: name.trim(),
+                    topic_prompt: topic.trim(),
                     ai_settings: settings,
                     platforms: platforms
                 })
             });
 
             if (res.ok) {
-                setLibrary({ ...library, ai_settings: settings, platforms: platforms });
+                setLibrary({
+                    ...library,
+                    name: name.trim(),
+                    topic_prompt: topic.trim(),
+                    ai_settings: settings,
+                    platforms: platforms
+                });
             } else {
                 alert('Failed to save settings');
             }
@@ -116,7 +82,7 @@ export default function LibraryDetailPage() {
 
 
     const handleGenerateMore = async () => {
-        const topic = isEditing ? editTopic : library?.topic_prompt;
+        const topic = library?.topic_prompt;
         if (!topic?.trim()) {
             alert('Add a topic prompt first to generate posts.');
             return;
@@ -245,111 +211,78 @@ export default function LibraryDetailPage() {
                         <FileText size={24} />
                     </div>
                     <div className={styles.libraryInfo}>
-                        {isEditing ? (
-                            <div className={styles.editForm}>
-                                <input
-                                    type="text"
-                                    className={styles.editInput}
-                                    value={editName}
-                                    onChange={e => setEditName(e.target.value)}
-                                    placeholder="Library name"
-                                    autoFocus
-                                />
-                                <textarea
-                                    className={styles.editTextarea}
-                                    value={editTopic}
-                                    onChange={e => setEditTopic(e.target.value)}
-                                    placeholder="Topic prompt (e.g. Tips about StarCraft 2)"
-                                    rows={2}
-                                />
-                                <div className={styles.editActions}>
-                                    <button className={styles.saveBtn} onClick={handleSaveEdit} disabled={isSaving}>
-                                        <Check size={16} /> {isSaving ? 'Saving...' : 'Save'}
-                                    </button>
-                                    <button className={styles.cancelBtn} onClick={handleCancelEdit}>
-                                        <X size={16} /> Cancel
-                                    </button>
-                                </div>
-                            </div>
+                        <div className={styles.titleRow}>
+                            <h1 className={styles.libraryName}>{library.name}</h1>
+                        </div>
+                        {library.topic_prompt ? (
+                            <p className={styles.topicPrompt}>{library.topic_prompt}</p>
                         ) : (
-                            <>
-                                <div className={styles.titleRow}>
-                                    <h1 className={styles.libraryName}>{library.name}</h1>
-                                    <button className={styles.editLibraryBtn} onClick={handleStartEdit}>
-                                        <Edit3 size={14} /> Edit
-                                    </button>
-                                </div>
-                                {library.topic_prompt ? (
-                                    <p className={styles.topicPrompt}>{library.topic_prompt}</p>
-                                ) : (
-                                    <p className={styles.noTopic}>No topic prompt — <button onClick={handleStartEdit}>add one</button></p>
-                                )}
-
-                                {/* Platform Icons */}
-                                {library.platforms && library.platforms.length > 0 && (
-                                    <div className={styles.platformRow} style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                                        {library.platforms.map(pid => {
-                                            const p = PLATFORMS.find(pl => pl.id === pid);
-                                            return p ? (
-                                                <div
-                                                    key={pid}
-                                                    className={styles.platformIconWrapper}
-                                                    title={`${p.name} - This library posts to ${p.name}`}
-                                                    style={{
-                                                        color: p.color,
-                                                        borderColor: p.color + '40', // 25% opacity border
-                                                        backgroundColor: p.color + '10' // 6% opacity bg
-                                                    }}
-                                                >
-                                                    {getPlatformIcon(pid, 24)}
-                                                </div>
-                                            ) : null;
-                                        })}
-                                    </div>
-                                )}
-
-                                {hasSettings && (
-                                    <div className={styles.settingsGrid} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', borderTop: 'none', paddingTop: 0, marginTop: '12px' }}>
-                                        {settings.tone && (
-                                            <span className={styles.settingPill} title={`Tone: ${settings.tone === 'Custom' ? settings.custom_tone : settings.tone}`}>
-                                                <MessageCircle />
-                                                <span className={styles.settingValue}>
-                                                    {settings.tone === 'Custom' ? settings.custom_tone : settings.tone}
-                                                </span>
-                                            </span>
-                                        )}
-                                        {settings.audience && (
-                                            <span className={styles.settingPill} title={`Audience: ${settings.audience}`}>
-                                                <Users />
-                                                <span className={styles.settingValue}>{settings.audience}</span>
-                                            </span>
-                                        )}
-                                        {settings.language && settings.language !== 'English' && (
-                                            <span className={styles.settingPill} title={`Language: ${settings.language}`}>
-                                                <span className={styles.settingValue}>{settings.language}</span>
-                                            </span>
-                                        )}
-                                        {settings.length && (
-                                            <span className={styles.settingPill} title={`Post Length: ${settings.length}`}>
-                                                <FileText />
-                                                <span className={styles.settingValue}>{settings.length}</span>
-                                            </span>
-                                        )}
-                                        {settings.hashtag_strategy && settings.hashtag_strategy !== 'none' && (
-                                            <span className={styles.settingPill} title={`Hashtags: ${settings.hashtag_strategy}`}>
-                                                <Hash />
-                                                <span className={styles.settingValue}>
-                                                    {settings.hashtag_strategy === 'auto' ? 'Auto Tags' : 'Custom Tags'}
-                                                </span>
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Fallback if only platforms exist but no AI settings */}
-
-                            </>
+                            <p className={styles.noTopic}>No topic prompt — <button onClick={() => setIsSettingsOpen(true)}>add one</button></p>
                         )}
+
+                        {/* Platform Icons */}
+                        {library.platforms && library.platforms.length > 0 && (
+                            <div className={styles.platformRow} style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                                {library.platforms.map(pid => {
+                                    const p = PLATFORMS.find(pl => pl.id === pid);
+                                    return p ? (
+                                        <div
+                                            key={pid}
+                                            className={styles.platformIconWrapper}
+                                            title={`${p.name} - This library posts to ${p.name}`}
+                                            style={{
+                                                color: p.color,
+                                                borderColor: p.color + '40', // 25% opacity border
+                                                backgroundColor: p.color + '10' // 6% opacity bg
+                                            }}
+                                        >
+                                            {getPlatformIcon(pid, 24)}
+                                        </div>
+                                    ) : null;
+                                })}
+                            </div>
+                        )}
+
+                        {hasSettings && (
+                            <div className={styles.settingsGrid} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', borderTop: 'none', paddingTop: 0, marginTop: '12px' }}>
+                                {settings.tone && (
+                                    <span className={styles.settingPill} title={`Tone: ${settings.tone === 'Custom' ? settings.custom_tone : settings.tone}`}>
+                                        <MessageCircle />
+                                        <span className={styles.settingValue}>
+                                            {settings.tone === 'Custom' ? settings.custom_tone : settings.tone}
+                                        </span>
+                                    </span>
+                                )}
+                                {settings.audience && (
+                                    <span className={styles.settingPill} title={`Audience: ${settings.audience}`}>
+                                        <Users />
+                                        <span className={styles.settingValue}>{settings.audience}</span>
+                                    </span>
+                                )}
+                                {settings.language && settings.language !== 'English' && (
+                                    <span className={styles.settingPill} title={`Language: ${settings.language}`}>
+                                        <span className={styles.settingValue}>{settings.language}</span>
+                                    </span>
+                                )}
+                                {settings.length && (
+                                    <span className={styles.settingPill} title={`Post Length: ${settings.length}`}>
+                                        <FileText />
+                                        <span className={styles.settingValue}>{settings.length}</span>
+                                    </span>
+                                )}
+                                {settings.hashtag_strategy && settings.hashtag_strategy !== 'none' && (
+                                    <span className={styles.settingPill} title={`Hashtags: ${settings.hashtag_strategy}`}>
+                                        <Hash />
+                                        <span className={styles.settingValue}>
+                                            {settings.hashtag_strategy === 'auto' ? 'Auto Tags' : 'Custom Tags'}
+                                        </span>
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Fallback if only platforms exist but no AI settings */}
+
                     </div>
                     <div className={styles.libraryActions}>
                         <button
@@ -480,6 +413,8 @@ export default function LibraryDetailPage() {
                 onClose={() => setIsSettingsOpen(false)}
                 initialSettings={library?.ai_settings || {}}
                 initialPlatforms={library?.platforms || []}
+                initialName={library?.name}
+                initialTopic={library?.topic_prompt || ''}
                 onSave={handleSaveAiSettings}
             />
         </div>

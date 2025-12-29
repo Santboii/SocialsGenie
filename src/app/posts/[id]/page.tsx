@@ -42,6 +42,14 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                 setSharedContent(existingPost.content);
                 setSelectedPlatforms(existingPost.platforms);
 
+                // Initialize platform content if it exists
+                if (existingPost.platformContent) {
+                    setPlatformContent(prev => ({
+                        ...prev,
+                        ...existingPost.platformContent
+                    }));
+                }
+
                 // Fetch library restrictions if applicable
                 if (existingPost.libraryId) {
                     try {
@@ -128,9 +136,19 @@ export default function EditPostPage({ params }: EditPostPageProps) {
         setError(null);
 
         try {
+            // Filter platform content to only save what's non-empty and relevant
+            const activePlatformContent = {} as Record<PlatformId, string>;
+            selectedPlatforms.forEach(p => {
+                const content = platformContent[p];
+                if (content && content.trim() !== '') {
+                    activePlatformContent[p] = content;
+                }
+            });
+
             await updatePost(post.id, {
                 content: sharedContent,
                 platforms: selectedPlatforms,
+                platformContent: activePlatformContent,
                 status,
             });
             router.push('/');

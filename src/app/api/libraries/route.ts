@@ -59,7 +59,9 @@ export async function POST(request: Request) {
                 auto_remix: auto_remix || false,
                 generate_images: generate_images || false,
                 topic_prompt: topic_prompt || null,
-                template_type: template_type || 'custom'
+                template_type: template_type || 'custom',
+                platforms: body.platforms || [],
+                ai_settings: body.ai_settings || {}
             })
             .select()
             .single();
@@ -95,7 +97,10 @@ export async function PUT(request: Request) {
                 color,
                 is_paused,
                 auto_remix,
-                generate_images
+                generate_images,
+                platforms: body.platforms,
+                ai_settings: body.ai_settings,
+                topic_prompt: body.topic_prompt,
             })
             .eq('id', id)
             .eq('user_id', user.id)

@@ -10,6 +10,7 @@ interface ModalProps {
     children: React.ReactNode;
     footer?: React.ReactNode;
     size?: 'sm' | 'md' | 'lg' | 'xl';
+    className?: string;
 }
 
 export default function Modal({
@@ -18,7 +19,8 @@ export default function Modal({
     title,
     children,
     footer,
-    size = 'md'
+    size = 'md',
+    className
 }: ModalProps) {
     useEffect(() => {
         if (isOpen) {
@@ -39,7 +41,7 @@ export default function Modal({
     return (
         <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true">
             <div
-                className={`${styles.modal} ${styles[size]}`}
+                className={`${styles.modal} ${styles[size]} ${className || ''}`}
                 onClick={e => e.stopPropagation()}
             >
                 <div className={styles.header}>

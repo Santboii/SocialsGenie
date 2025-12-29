@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
 import styles from './LibrarySettingsModal.module.css';
-import { Save } from 'lucide-react';
+import { Save, Sparkles, Loader2 } from 'lucide-react';
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 
 // ...
@@ -26,7 +26,9 @@ interface LibrarySettingsModalProps {
     onClose: () => void;
     initialSettings: LibraryAiSettings;
     initialPlatforms?: PlatformId[];
-    onSave: (settings: LibraryAiSettings, platforms: PlatformId[]) => Promise<void>;
+    initialName?: string;
+    initialTopic?: string;
+    onSave: (name: string, topic: string, settings: LibraryAiSettings, platforms: PlatformId[]) => Promise<void>;
 }
 
 export default function LibrarySettingsModal({
@@ -34,21 +36,50 @@ export default function LibrarySettingsModal({
     onClose,
     initialSettings,
     initialPlatforms,
+    initialName,
+    initialTopic,
     onSave
 }: LibrarySettingsModalProps) {
     const [settings, setSettings] = useState<LibraryAiSettings>(initialSettings || {});
     const [platforms, setPlatforms] = useState<PlatformId[]>(initialPlatforms || []);
+    const [name, setName] = useState(initialName || '');
+    const [topic, setTopic] = useState(initialTopic || '');
     const [isSaving, setIsSaving] = useState(false);
+    const [isOptimizing, setIsOptimizing] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setSettings(initialSettings || {});
             setPlatforms(initialPlatforms || []);
+            setName(initialName || '');
+            setTopic(initialTopic || '');
         }
-    }, [isOpen, initialSettings, initialPlatforms]);
+    }, [isOpen, initialSettings, initialPlatforms, initialName, initialTopic]);
 
     const handleChange = (field: keyof LibraryAiSettings, value: any) => {
         setSettings(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleOptimizePrompt = async () => {
+        if (!topic.trim() || isOptimizing) return;
+
+        setIsOptimizing(true);
+        try {
+            const response = await fetch('/api/ai/optimize-prompt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: topic, platform: 'general' })
+            });
+
+            if (!response.ok) throw new Error('Failed to optimize');
+
+            const data = await response.json();
+            setTopic(data.optimizedPrompt);
+        } catch (error) {
+            console.error('Failed to optimize prompt:', error);
+        } finally {
+            setIsOptimizing(false);
+        }
     };
 
     const handlePlatformToggle = (platformId: PlatformId) => {
@@ -60,9 +91,14 @@ export default function LibrarySettingsModal({
     };
 
     const handleSave = async () => {
+        if (!name.trim()) {
+            alert('Library name is required');
+            return;
+        }
+
         setIsSaving(true);
         try {
-            await onSave(settings, platforms);
+            await onSave(name, topic, settings, platforms);
             onClose();
         } catch (error) {
             console.error('Failed to save settings', error);
@@ -75,7 +111,7 @@ export default function LibrarySettingsModal({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Library AI Generation Settings"
+            title="Edit Library Settings"
             size="lg"
             footer={
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -90,6 +126,54 @@ export default function LibrarySettingsModal({
             }
         >
             <div className={styles.form}>
+
+                {/* Basic Info */}
+                <div className={styles.formGroup}>
+                    <label className={styles.label}>Library Name</label>
+                    <input
+                        type="text"
+                        className={styles.input}
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder="e.g. Daily Inspiration"
+                    />
+                </div>
+
+                <div className={styles.formGroup}>
+                    <label className={styles.label}>
+                        Topic Prompt
+                        <span className={styles.subLabel}>What is this library about?</span>
+                    </label>
+                    <textarea
+                        className={styles.textarea}
+                        value={topic}
+                        onChange={e => setTopic(e.target.value)}
+                        placeholder="e.g. Tips and tricks for playing StarCraft 2"
+                        rows={3}
+                    />
+                    <div className={styles.inputActions}>
+                        <button
+                            className={styles.optimizeBtn}
+                            onClick={handleOptimizePrompt}
+                            disabled={!topic.trim() || isOptimizing}
+                            type="button"
+                        >
+                            {isOptimizing ? (
+                                <>
+                                    <Loader2 size={14} className={styles.spinnerIcon} />
+                                    Optimizing...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles size={14} />
+                                    Optimize prompt
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+
+                <div className={styles.divider} />
 
                 {/* Platform Selection */}
                 <div className={styles.formGroup}>
@@ -232,6 +316,6 @@ export default function LibrarySettingsModal({
                 </div>
 
             </div>
-        </Modal>
+        </Modal >
     );
 }

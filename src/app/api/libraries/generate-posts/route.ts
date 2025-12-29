@@ -64,38 +64,101 @@ export async function POST(request: Request) {
             hashtagInstruction = `Append exactly these hashtags to every post: ${settings.custom_hashtags}`;
         }
 
+        // Create platform-specific prompt instructions
+        const platformInstructions: string[] = [];
+        const requestedVariants: string[] = [];
+
+        if (targetPlatforms.includes('twitter')) {
+            platformInstructions.push("- For Twitter (X): STRICT LIMIT: Must be under 280 characters. Concise, punchy, no hashtags.");
+            requestedVariants.push('twitter');
+        }
+        if (targetPlatforms.includes('threads')) {
+            platformInstructions.push("- For Threads: Conversational, under 500 characters. Can be slightly longer than Twitter.");
+            requestedVariants.push('threads');
+        }
+        if (targetPlatforms.includes('linkedin')) {
+            platformInstructions.push("- For LinkedIn: Professional, expanded version (100-200 words). Use bullet points if helpful.");
+            requestedVariants.push('linkedin');
+        }
+        if (targetPlatforms.includes('instagram')) {
+            platformInstructions.push("- For Instagram: Visual-first caption. Use line breaks for readability.");
+            requestedVariants.push('instagram');
+        }
+        if (targetPlatforms.includes('facebook')) {
+            platformInstructions.push("- For Facebook: Engaging, community-focused, conversational style.");
+            requestedVariants.push('facebook');
+        }
+
+        const validVariants = requestedVariants.length > 0 ? requestedVariants : ["twitter"];
+
         const prompt = `You are a social media content expert. Generate ${count} unique, engaging social media posts about: "${topicPrompt}"
         
 CONTEXT:
 - Tone: ${tone}
 - Language: ${language}
-- Length: ${lengthInstruction}
 - ${audience}
 
 REQUIREMENTS:
 - ${emojiInstruction}
 - ${hashtagInstruction}
-- Make them varied in style: some questions, some statements, some tips.
-- Make them shareable and engaging.
+- Create a "Master Idea" content that is platform-neutral (${lengthInstruction}).
+- Create specific variants for: ${validVariants.join(', ')}.
 
-Return ONLY a JSON array of strings, no other text:
-["post 1 content", "post 2 content", ...]`;
+PLATFORM RULES:
+${platformInstructions.join('\n')}
+
+CRITICAL OUTPUT FORMATTING:
+- Return ONLY a valid JSON array.
+- Do NOT wrap in markdown code blocks (no \`\`\`json).
+- Do NOT include any conversational text.
+- Ensure "platform_content" keys match exactly: ${validVariants.join(', ')}.
+
+EXAMPLE JSON STRUCTURE:
+[
+  {
+    "content": "Master content here...",
+    "platform_content": {
+        "twitter": "Short tweet...",
+        "linkedin": "Longer post...",
+        "instagram": "Caption with line breaks..."
+    }
+  }
+]`;
 
         const result = await model.generateContent(prompt);
         const responseText = result.response.text();
 
-        // Parse the JSON response
-        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-        if (!jsonMatch) {
-            throw new Error('Failed to parse AI response');
+        // Robustly extract JSON array
+        console.log('Raw AI Response:', responseText); // Log for debugging
+
+        let jsonString = responseText;
+        // 1. Try to find content within ```json ... ``` blocks
+        const codeBlockMatch = responseText.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
+        if (codeBlockMatch) {
+            jsonString = codeBlockMatch[1];
+        } else {
+            // 2. Fallback: find the first '[' and the last ']'
+            const firstBracket = responseText.indexOf('[');
+            const lastBracket = responseText.lastIndexOf(']');
+            if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+                jsonString = responseText.substring(firstBracket, lastBracket + 1);
+            }
         }
 
-        const posts: string[] = JSON.parse(jsonMatch[0]);
+        let generatedItems: { content: string, platform_content?: Record<string, string> }[] = [];
+        try {
+            generatedItems = JSON.parse(jsonString);
+        } catch (e) {
+            console.error('JSON Parse Error:', e);
+            console.error('Failed JSON string:', jsonString);
+            throw new Error(`Failed to parse AI response. Raw: ${responseText.substring(0, 100)}...`);
+        }
 
-        // Insert posts into database (without platforms - those are in post_platforms table)
-        const postsToInsert = posts.map(content => ({
+        // Insert posts into database
+        const postsToInsert = generatedItems.map(item => ({
             user_id: user.id,
-            content,
+            content: item.content,
+            platform_content: item.platform_content || {},
             status: 'draft',
             library_id: libraryId,
             is_evergreen: true,
@@ -112,17 +175,29 @@ Return ONLY a JSON array of strings, no other text:
         }
 
         // Insert platform assignments based on library settings
+        // Insert platform assignments based on library settings
         if (insertedPosts && insertedPosts.length > 0) {
             const targetPlatforms = (library.platforms && library.platforms.length > 0)
                 ? library.platforms
                 : ['twitter']; // Fallback to twitter if no platforms set
 
-            const platformAssignments = insertedPosts.flatMap(post =>
-                targetPlatforms.map((platform: string) => ({
+            const platformAssignments = insertedPosts.flatMap((post, index) => {
+                const originalItem = generatedItems[index];
+                const variants = originalItem.platform_content || {};
+
+                // Normalize variant keys to lowercase for safe lookup
+                const normalizedVariants = Object.keys(variants).reduce((acc, key) => {
+                    acc[key.toLowerCase()] = variants[key];
+                    return acc;
+                }, {} as Record<string, string>);
+
+                return targetPlatforms.map((platform: string) => ({
                     post_id: post.id,
                     platform: platform,
-                }))
-            );
+                    // Use normalized lookup to handle "Twitter" vs "twitter" AI idiosyncrasies
+                    custom_content: normalizedVariants[platform.toLowerCase()] || null
+                }));
+            });
 
             await supabase.from('post_platforms').insert(platformAssignments);
         }
