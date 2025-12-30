@@ -4,7 +4,10 @@ const CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
 const CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
 const LINKEDIN_AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization';
 const LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';
-const LINKEDIN_API_URL = 'https://api.linkedin.com/v2';
+const LINKEDIN_API_URL = 'https://api.linkedin.com';
+
+// API Version for the new Posts API
+const LINKEDIN_API_VERSION = '202401';
 
 /**
  * Generates the LinkedIn OAuth authorization URL
@@ -68,7 +71,7 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string) {
  * Fetches user profile information using OpenID Connect
  */
 export async function getLinkedInUserInfo(accessToken: string) {
-    const response = await fetch(`${LINKEDIN_API_URL}/userinfo`, {
+    const response = await fetch(`${LINKEDIN_API_URL}/v2/userinfo`, {
         headers: {
             Authorization: `Bearer ${accessToken}`,
         },
@@ -126,54 +129,55 @@ export async function refreshLinkedInToken(refreshToken: string) {
 }
 
 /**
- * Register an image upload to LinkedIn
+ * Initialize image upload to LinkedIn using the new Images API
+ * Returns the upload URL and image URN
  */
-async function registerUpload(accessToken: string, urn: string) {
-    const response = await fetch(`${LINKEDIN_API_URL}/assets?action=registerUpload`, {
+async function initializeImageUpload(accessToken: string, personUrn: string) {
+    const response = await fetch(`${LINKEDIN_API_URL}/rest/images?action=initializeUpload`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
+            'LinkedIn-Version': LINKEDIN_API_VERSION,
+            'X-Restli-Protocol-Version': '2.0.0',
         },
         body: JSON.stringify({
-            registerUploadRequest: {
-                recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
-                owner: `urn:li:person:${urn}`,
-                serviceRelationships: [
-                    {
-                        relationshipType: 'OWNER',
-                        identifier: 'urn:li:userGeneratedContent',
-                    },
-                ],
+            initializeUploadRequest: {
+                owner: personUrn,
             },
         }),
     });
 
     if (!response.ok) {
-        throw new Error(`Failed to register upload: ${await response.text()}`);
+        const errorText = await response.text();
+        console.error('LinkedIn image upload init failed:', errorText);
+        throw new Error(`Failed to initialize image upload: ${errorText}`);
     }
 
     const data = await response.json();
     return {
-        uploadUrl: data.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl,
-        asset: data.value.asset,
+        uploadUrl: data.value.uploadUrl,
+        imageUrn: data.value.image,
     };
 }
 
 /**
  * Upload image binary to LinkedIn
  */
-async function uploadImage(uploadUrl: string, imageBuffer: Buffer) {
+async function uploadImageBinary(uploadUrl: string, accessToken: string, imageBuffer: Buffer) {
     const response = await fetch(uploadUrl, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
-            'Authorization': 'Bearer ' + uploadUrl.split('Bearer ')[1], // Sometimes uploadUrl has token
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/octet-stream',
         },
-        body: imageBuffer as any,
+        body: new Uint8Array(imageBuffer),
     });
 
     if (!response.ok) {
-        throw new Error(`Failed to upload image binary: ${await response.text()}`);
+        const errorText = await response.text();
+        console.error('LinkedIn image binary upload failed:', errorText);
+        throw new Error(`Failed to upload image binary: ${errorText}`);
     }
 }
 
@@ -185,69 +189,75 @@ export function generateState(): string {
 }
 
 /**
- * Post a share to LinkedIn (text or text + image)
+ * Post a share to LinkedIn using the new Posts API (text or text + image)
  */
 export async function postLinkedInShare(
     accessToken: string,
-    urn: string,
+    personId: string,
     content: string,
     imageBuffer?: Buffer,
     imageAltText?: string
 ) {
-    let mediaAsset = null;
+    const personUrn = `urn:li:person:${personId}`;
+    let imageUrn: string | null = null;
 
     // Handle Image Upload if present
     if (imageBuffer) {
-        const { uploadUrl, asset } = await registerUpload(accessToken, urn);
-        await uploadImage(uploadUrl, imageBuffer);
-        mediaAsset = asset;
+        try {
+            const { uploadUrl, imageUrn: urn } = await initializeImageUpload(accessToken, personUrn);
+            await uploadImageBinary(uploadUrl, accessToken, imageBuffer);
+            imageUrn = urn;
+        } catch (err) {
+            console.error('Image upload failed, proceeding with text-only post:', err);
+            // Proceed without image rather than failing entirely
+        }
     }
 
-    const body: any = {
-        author: `urn:li:person:${urn}`,
+    // Build post body using the new Posts API schema
+    const postBody: any = {
+        author: personUrn,
+        commentary: content,
+        visibility: 'PUBLIC',
+        distribution: {
+            feedDistribution: 'MAIN_FEED',
+            targetEntities: [],
+            thirdPartyDistributionChannels: [],
+        },
         lifecycleState: 'PUBLISHED',
-        specificContent: {
-            'com.linkedin.ugc.ShareContent': {
-                shareCommentary: {
-                    text: content,
-                },
-                shareMediaCategory: mediaAsset ? 'IMAGE' : 'NONE',
-            },
-        },
-        visibility: {
-            'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC',
-        },
     };
 
-    if (mediaAsset) {
-        body.specificContent['com.linkedin.ugc.ShareContent'].media = [
-            {
-                status: 'READY',
-                description: {
-                    text: imageAltText || 'Image',
-                },
-                media: mediaAsset,
-                title: {
-                    text: 'Shared Image',
-                },
+    // Add image content if we have one
+    if (imageUrn) {
+        postBody.content = {
+            media: {
+                id: imageUrn,
+                altText: imageAltText || 'Image',
             },
-        ];
+        };
     }
 
-    const response = await fetch(`${LINKEDIN_API_URL}/ugcPosts`, {
+    const response = await fetch(`${LINKEDIN_API_URL}/rest/posts`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
+            'LinkedIn-Version': LINKEDIN_API_VERSION,
             'X-Restli-Protocol-Version': '2.0.0',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(postBody),
     });
 
     if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Failed to post to LinkedIn: ${error}`);
+        const errorText = await response.text();
+        console.error('LinkedIn post failed:', errorText);
+        throw new Error(`Failed to post to LinkedIn: ${errorText}`);
     }
 
-    return await response.json();
+    // The new Posts API returns the post URN in the x-restli-id header
+    const postUrn = response.headers.get('x-restli-id') || response.headers.get('x-linkedin-id');
+
+    return {
+        id: postUrn,
+        success: true
+    };
 }
