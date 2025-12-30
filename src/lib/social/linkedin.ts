@@ -22,7 +22,7 @@ export function getLinkedInAuthUrl(redirectUri: string, state: string): string {
         client_id: CLIENT_ID,
         redirect_uri: redirectUri,
         state: state,
-        scope: 'openid profile w_member_social email',
+        scope: 'openid profile w_member_social email w_organization_social r_organization_social',
     });
 
     return `${LINKEDIN_AUTH_URL}?${params.toString()}`;
@@ -191,20 +191,29 @@ export function generateState(): string {
 /**
  * Post a share to LinkedIn using the new Posts API (text or text + image)
  */
+/**
+ * Post a share to LinkedIn using the new Posts API (text or text + image)
+ * authorId can be a raw ID (assumed person) or a full URN (urn:li:person:123 or urn:li:organization:456)
+ */
 export async function postLinkedInShare(
     accessToken: string,
-    personId: string,
+    authorId: string,
     content: string,
     imageBuffer?: Buffer,
     imageAltText?: string
 ) {
-    const personUrn = `urn:li:person:${personId}`;
+    // Determine the correct Author URN
+    // If it already starts with urn:, use it. Otherwise assume it's a person ID.
+    const authorUrn = authorId.startsWith('urn:')
+        ? authorId
+        : `urn:li:person:${authorId}`;
+
     let imageUrn: string | null = null;
 
     // Handle Image Upload if present
     if (imageBuffer) {
         try {
-            const { uploadUrl, imageUrn: urn } = await initializeImageUpload(accessToken, personUrn);
+            const { uploadUrl, imageUrn: urn } = await initializeImageUpload(accessToken, authorUrn);
             await uploadImageBinary(uploadUrl, accessToken, imageBuffer);
             imageUrn = urn;
         } catch (err) {
@@ -215,7 +224,7 @@ export async function postLinkedInShare(
 
     // Build post body using the new Posts API schema
     const postBody: any = {
-        author: personUrn,
+        author: authorUrn,
         commentary: content,
         visibility: 'PUBLIC',
         distribution: {
