@@ -81,8 +81,8 @@ export async function POST(request: Request) {
             // Do NOT add to requestedVariants. Use Shared.
         }
         if (targetPlatforms.includes('instagram')) {
-            platformInstructions.push("- For Instagram: Visual-first caption. Use line breaks for readability.");
-            requestedVariants.push('instagram');
+            platformInstructions.push("- For Instagram: The Master Content will be used. Ensure Master Content works well as a caption.");
+            // Do NOT add to requestedVariants. Use Shared.
         }
         if (targetPlatforms.includes('facebook')) {
             platformInstructions.push("- For Facebook: The Master Content will be used. Ensure Master Content is engaging.");

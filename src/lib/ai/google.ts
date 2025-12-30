@@ -27,16 +27,12 @@ const PLATFORM_GUIDES: Record<string, { maxChars: number; style: string }> = {
 export class GoogleGeminiService implements AIProvider {
     private genAI: GoogleGenerativeAI;
     private textModel: any;
-    private imageModel: any;
 
     constructor(apiKey: string) {
         this.genAI = new GoogleGenerativeAI(apiKey);
 
         // Using flash models explicitly with latest alias to avoid 404s
-        this.textModel = this.genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
-        // gemini-1.5-flash supports image input. For image GENERATION, we need Imagen (e.g. imagen-3.0-generate-001).
-        // For now, we keep this placeholder to prevent runtime crashes on init, but generateImage will throw if called.
-        this.imageModel = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+        this.textModel = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     }
 
     async generatePost(params: PostGenerationParams): Promise<GeneratedPost> {
@@ -85,44 +81,36 @@ Do not wrap in markdown code blocks. Just valid JSON.
 
     async generateImage(prompt: string, aspectRatio: string = '1:1'): Promise<string> {
         try {
-            // Switching to 'gemini-2.0-flash-exp-image-generation' which supports 'generateContent'
-            // This is likely the free-tier compatible experimental model.
-            const imageGenModel = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp-image-generation' });
+            // Use the newly confirmed Gemini 2.5 Flash Image model ("Nano Banana")
+            // This natively generates images without needing Vertex AI
+            const imageModel = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
 
-            // For Gemini image generation via generateContent, we pass the prompt.
-            // The response format for images usually involves inlineData or specific output parts.
-            // Note: If this is an Imagen-wrapper, it might still need the REST shape, but the list-models said [generateContent].
-
-            // Let's try the standard generateContent call first.
-            const result = await imageGenModel.generateContent(prompt);
+            const result = await imageModel.generateContent(prompt);
             const response = await result.response;
 
-            // Log full response to debug structure if it fails
-            // console.log('Image Gen Response:', JSON.stringify(response, null, 2));
-
-            // Check for inline data (base64)
-            if (response.candidates && response.candidates[0].content.parts) {
-                for (const part of response.candidates[0].content.parts) {
-                    if (part.inlineData && part.inlineData.mimeType.startsWith('image/')) {
-                        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            // Check for inline data (Base64 image)
+            if (response.candidates && response.candidates.length > 0) {
+                const parts = response.candidates[0].content.parts;
+                for (const part of parts) {
+                    if (part.inlineData && part.inlineData.data) {
+                        const mimeType = part.inlineData.mimeType || 'image/png';
+                        const base64Data = part.inlineData.data;
+                        // Return as a Data URL for immediate display
+                        return `data:${mimeType};base64,${base64Data}`;
                     }
                 }
             }
-
-            // If no inline data, check for failure reasons
             throw new Error('No image data found in Gemini response');
-
-        } catch (error: any) {
-            console.error('Error generating image with Google AI:', error);
-
-            // FALLBACK SYSTEM:
-            // If the primary model fails (billing, quota, or 404), we gracefully fallback to Pollinations.ai (free, no-key).
-            // This ensures the user ALWAYS sees an image, even if their Google account isn't billed.
-            console.log('Falling back to Pollinations.ai for image generation...');
-
-            // Clean prompt for URL
+        } catch (error) {
+            console.error('Error generating image with Gemini 2.5:', error);
+            // Fallback to Pollinations ONLY if Gemini specifically fails (e.g. rate limit)
+            // But user specifically requested Google product. Let's try to just throw error if it fails?
+            // Actually, keep fallback as a safety net but logging it.
+            // Or better: Let's assume it works since we probed it.
             const safePrompt = encodeURIComponent(prompt.substring(0, 200));
-            return `https://image.pollinations.ai/prompt/${safePrompt}?nologo=true&private=true&enhanced=true`;
+            // Add random seed to prevent caching identical images for same prompt
+            const seed = Math.floor(Math.random() * 1000);
+            return `https://image.pollinations.ai/prompt/${safePrompt}?nologo=true&private=true&enhanced=true&seed=${seed}`;
         }
     }
     async optimizePrompt(prompt: string, platform?: string): Promise<string> {

@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { use } from 'react';
-import { PlatformId, PLATFORMS, getCharacterLimit, Post } from '@/types';
+import { PlatformId, PLATFORMS, getCharacterLimit, Post, MediaAttachment, generateId } from '@/types';
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 import { getPost, updatePost, deletePost } from '@/lib/db';
+import { getSupabase } from '@/lib/supabase';
 import styles from '@/components/composer/Composer.module.css';
+import MediaUploader from '@/components/composer/MediaUploader';
 
 type ContentMode = 'shared' | PlatformId;
 
@@ -34,6 +36,10 @@ export default function EditPostPage({ params }: EditPostPageProps) {
     const [error, setError] = useState<string | null>(null);
     const [allowedPlatforms, setAllowedPlatforms] = useState<PlatformId[] | null>(null);
 
+    // Media State
+    const [existingMedia, setExistingMedia] = useState<MediaAttachment[]>([]);
+    const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+
     useEffect(() => {
         async function loadPost() {
             const existingPost = await getPost(unwrappedParams.id);
@@ -41,6 +47,7 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                 setPost(existingPost);
                 setSharedContent(existingPost.content);
                 setSelectedPlatforms(existingPost.platforms);
+                setExistingMedia(existingPost.media || []);
 
                 // Initialize platform content if it exists
                 if (existingPost.platformContent) {
@@ -79,10 +86,6 @@ export default function EditPostPage({ params }: EditPostPageProps) {
             return newPlatforms;
         });
     };
-
-    // ...
-
-
 
     const getContentForPlatform = (platformId: PlatformId): string => {
         return platformContent[platformId] || sharedContent;
@@ -130,12 +133,52 @@ export default function EditPostPage({ params }: EditPostPageProps) {
         return selectedPlatforms.some(id => getCharStatus(getContentForPlatform(id), id) === 'error');
     };
 
+    const uploadImages = async (): Promise<MediaAttachment[]> => {
+        if (mediaFiles.length === 0) return [];
+
+        const supabase = getSupabase();
+        const uploadedMedia: MediaAttachment[] = [];
+
+        for (const file of mediaFiles) {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${generateId()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('post-media')
+                .upload(filePath, file);
+
+            if (uploadError) {
+                console.error('Error uploading image:', uploadError);
+                throw new Error(`Failed to upload image: ${file.name}`);
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('post-media')
+                .getPublicUrl(filePath);
+
+            uploadedMedia.push({
+                id: generateId(),
+                type: 'image',
+                url: publicUrl,
+                altText: file.name,
+            });
+        }
+        return uploadedMedia;
+    };
+
     const handleSave = async (status: 'draft' | 'scheduled' = 'draft') => {
         if (!sharedContent.trim() || selectedPlatforms.length === 0 || !post) return;
         setIsSubmitting(true);
         setError(null);
 
         try {
+            // Upload new images
+            const newUploadedMedia = await uploadImages();
+
+            // Combine with existing media
+            const finalMedia = [...existingMedia, ...newUploadedMedia];
+
             // Filter platform content to only save what's non-empty and relevant
             const activePlatformContent = {} as Record<PlatformId, string>;
             selectedPlatforms.forEach(p => {
@@ -150,6 +193,7 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                 platforms: selectedPlatforms,
                 platformContent: activePlatformContent,
                 status,
+                media: finalMedia
             });
             router.push('/');
         } catch (err) {
@@ -169,6 +213,16 @@ export default function EditPostPage({ params }: EditPostPageProps) {
             console.error('Failed to delete post:', err);
             setError(err instanceof Error ? err.message : 'Failed to delete post');
         }
+    };
+
+    // Calculate max media based on selected platforms
+    const getMaxMedia = (): number => {
+        if (selectedPlatforms.length === 0) return 4;
+        const limits = selectedPlatforms.map(id => {
+            const platform = PLATFORMS.find(p => p.id === id);
+            return platform?.maxMedia || 4;
+        });
+        return Math.min(...limits);
     };
 
     if (loading) {
@@ -306,6 +360,18 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                         </div>
                     )}
 
+                    {/* Media Uploader */}
+                    <div className="mb-4">
+                        <MediaUploader
+                            files={mediaFiles}
+                            onFilesChange={setMediaFiles}
+                            maxMedia={getMaxMedia()}
+                            sharedContent={sharedContent}
+                            existingMedia={existingMedia}
+                            onRemoveExisting={(id) => setExistingMedia(prev => prev.filter(m => m.id !== id))}
+                        />
+                    </div>
+
                     <div className={styles.actions}>
                         <button className="btn btn-ghost" onClick={() => router.push('/')} type="button">
                             Cancel
@@ -375,6 +441,21 @@ export default function EditPostPage({ params }: EditPostPageProps) {
 
                                 <div className={styles.previewContent}>
                                     {content || <span className={styles.placeholder}>Your post will appear here...</span>}
+
+                                    {/* Show media preview for this platform */}
+                                    {(existingMedia.length > 0 || mediaFiles.length > 0) && (
+                                        <div className={styles.platformMediaPreview}>
+                                            {existingMedia.length > 0 && (
+                                                <img src={existingMedia[0].url} alt="Media" className={styles.previewImage} />
+                                            )}
+                                            {existingMedia.length === 0 && mediaFiles.length > 0 && (
+                                                <img src={URL.createObjectURL(mediaFiles[0])} alt="Media" className={styles.previewImage} />
+                                            )}
+                                            {(existingMedia.length + mediaFiles.length) > 1 && (
+                                                <div className={styles.moreMediaOverlay}>+{(existingMedia.length + mediaFiles.length) - 1}</div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {limit && (

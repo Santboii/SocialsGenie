@@ -381,8 +381,18 @@ export default function LibraryDetailPage() {
                     <div className={styles.postsList}>
                         {posts.map(post => (
                             <Link href={`/posts/${post.id}`} key={post.id} className={styles.postCard}>
-                                <div className={styles.postMain}>
-                                    <p className={styles.postContent}>{post.content}</p>
+                                {post.media && post.media.length > 0 && (
+                                    <div className={styles.cardMediaPreview}>
+                                        <img src={post.media[0].url} alt="Post media" loading="lazy" />
+                                        {post.media.length > 1 && (
+                                            <span className={styles.mediaCount}>+{post.media.length - 1}</span>
+                                        )}
+                                    </div>
+                                )}
+                                <div className={styles.cardContent}>
+                                    <div className={styles.postMain}>
+                                        <p className={styles.postContent}>{post.content}</p>
+                                    </div>
                                     <div className={styles.postMeta}>
                                         <div className={styles.platformBadges}>
                                             {post.post_platforms?.map(pp => (

@@ -48,8 +48,8 @@ export default function LibrariesPage() {
     const [name, setName] = useState('');
     const [topicPrompt, setTopicPrompt] = useState('');
     const [platforms, setPlatforms] = useState<PlatformId[]>([]);
+
     const [color, setColor] = useState(PRESET_COLORS[0]);
-    const [autoRemix, setAutoRemix] = useState(true);
     const [generateImages, setGenerateImages] = useState(false);
 
     // AI Settings State
@@ -96,7 +96,6 @@ export default function LibrariesPage() {
         setTopicPrompt('');
         setPlatforms([]);
         setColor(PRESET_COLORS[0]);
-        setAutoRemix(true);
         setGenerateImages(false);
         setTone('Professional');
         setLength('medium');
@@ -123,7 +122,6 @@ export default function LibrariesPage() {
         setName(lib.name);
         setColor(lib.color);
         setTopicPrompt(lib.topic_prompt || '');
-        setAutoRemix(lib.auto_remix);
         setGenerateImages(lib.generate_images || false);
 
         // Populate AI Settings
@@ -171,7 +169,6 @@ export default function LibrariesPage() {
                     color,
                     platforms,
                     is_paused: false,
-                    auto_remix: autoRemix,
                     generate_images: generateImages,
                     topic_prompt: topicPrompt,
                     template_type: selectedTemplate || 'custom',
@@ -256,7 +253,6 @@ export default function LibrariesPage() {
                     color,
                     platforms,
                     is_paused: false,
-                    auto_remix: autoRemix,
                     generate_images: generateImages,
                     topic_prompt: topicPrompt,
                     ai_settings: {
@@ -458,17 +454,7 @@ export default function LibrariesPage() {
                         </div>
 
                         <div className={styles.toggleGroup}>
-                            <label className={styles.toggle}>
-                                <input
-                                    type="checkbox"
-                                    checked={autoRemix}
-                                    onChange={e => setAutoRemix(e.target.checked)}
-                                />
-                                <div>
-                                    <span className={styles.toggleTitle}>✨ AI Smart Remix</span>
-                                    <span className={styles.toggleDesc}>Rephrase posts before publishing</span>
-                                </div>
-                            </label>
+
 
                             <label className={styles.toggle}>
                                 <input
@@ -659,13 +645,22 @@ export default function LibrariesPage() {
                                 <span>{lib.post_count || 0} posts</span>
                             </div>
 
-                            {lib.auto_remix && (
-                                <div className={styles.featureBadge}>
-                                    <span>✨ Smart Remix</span>
-                                </div>
-                            )}
+
                         </div>
                     ))
+                )}
+
+                {/* Add Library Placeholder Card */}
+                {!isLoading && libraries.length > 0 && (
+                    <div
+                        className={`${styles.card} ${styles.addLibraryCard}`}
+                        onClick={() => { resetForm(); setIsModalOpen(true); }}
+                    >
+                        <div className={styles.addLibraryContent}>
+                            <Plus size={32} className={styles.addIcon} />
+                            <span>Add Library</span>
+                        </div>
+                    </div>
                 )}
             </div>
 

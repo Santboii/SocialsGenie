@@ -56,7 +56,7 @@ export default function PostComposer() {
     const { data: fetchedLibraries, isLoading: isLoadingLibraries } = useLibraries();
     const [libraries, setLibraries] = useState<ContentLibrary[]>([]);
     const [selectedLibraryId, setSelectedLibraryId] = useState('');
-    const [isEvergreen, setIsEvergreen] = useState(true); // Default true for library posts
+
 
     useEffect(() => {
         if (fetchedLibraries) {
@@ -452,7 +452,6 @@ export default function PostComposer() {
                 platformContent,
                 media: uploadedMedia,
                 libraryId: postMode === 'library' ? selectedLibraryId : undefined,
-                isEvergreen: postMode === 'library' ? isEvergreen : false,
             });
 
             if (targetStatus === 'published') {
@@ -666,7 +665,7 @@ export default function PostComposer() {
                                 onClick={() => setPostMode('library')}
                             >
                                 <Library size={16} />
-                                <span>Add to Queue</span>
+                                <span>Add to Library</span>
                             </button>
                         </div>
 
@@ -738,21 +737,6 @@ export default function PostComposer() {
                                     )}
                                 </div>
 
-                                <div className={styles.evergreenToggle}>
-                                    <label className={styles.checkboxLabel}>
-                                        <input
-                                            type="checkbox"
-                                            checked={isEvergreen}
-                                            onChange={(e) => setIsEvergreen(e.target.checked)}
-                                        />
-                                        <div className={styles.checkboxText}>
-                                            <span className={styles.checkboxTitle}>♻️ Recycle Indefinitely</span>
-                                            <span className={styles.checkboxDesc}>
-                                                Post will stay in the queue and cycle (Auto-Remix supported)
-                                            </span>
-                                        </div>
-                                    </label>
-                                </div>
                             </div>
                         )}
                     </div>

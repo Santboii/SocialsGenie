@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MediaAttachment, generateId, PLATFORMS } from '@/types';
 import styles from './Composer.module.css'; // We'll share the styles for now to avoid breaking CSS
 import { getSupabase } from '@/lib/supabase';
@@ -11,6 +12,8 @@ interface MediaUploaderProps {
     maxMedia: number;
     disabled?: boolean;
     sharedContent?: string; // For default image prompt
+    existingMedia?: MediaAttachment[];
+    onRemoveExisting?: (mediaId: string) => void;
 }
 
 export default function MediaUploader({
@@ -18,7 +21,9 @@ export default function MediaUploader({
     onFilesChange,
     maxMedia,
     disabled,
-    sharedContent
+    sharedContent,
+    existingMedia = [],
+    onRemoveExisting
 }: MediaUploaderProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -56,7 +61,7 @@ export default function MediaUploader({
 
         if (imageFiles.length === 0) return;
 
-        const currentCount = files.length;
+        const currentCount = files.length + existingMedia.length;
         const newCount = currentCount + imageFiles.length;
 
         // Global hard limit check (10)
@@ -165,11 +170,13 @@ export default function MediaUploader({
         }
     };
 
+    const totalMediaCount = existingMedia.length + files.length;
+
     return (
         <>
             <div
-                className={`${styles.mediaDropzone} ${isDragging ? styles.dragging : ''} ${files.length > 0 ? styles.hasImages : ''}`}
-                onClick={() => !disabled && fileInputRef.current?.click()}
+                className={`${styles.mediaDropzone} ${isDragging ? styles.dragging : ''} ${totalMediaCount > 0 ? styles.hasImages : ''}`}
+                onClick={() => !disabled && totalMediaCount === 0 && fileInputRef.current?.click()}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -184,7 +191,7 @@ export default function MediaUploader({
                     disabled={disabled}
                 />
 
-                {files.length === 0 ? (
+                {totalMediaCount === 0 ? (
                     <>
                         <div className={styles.dropzoneContent}>
                             <span className={styles.dropzoneIcon}>📷</span>
@@ -307,8 +314,34 @@ export default function MediaUploader({
                     </>
                 ) : (
                     <div className={styles.imagePreviewGrid}>
+                        {/* Existing Media Previews */}
+                        {existingMedia.map((media) => (
+                            <div key={media.id} className={styles.imagePreviewItem}>
+                                <img
+                                    src={media.url}
+                                    alt={media.altText || 'Existing image'}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPreviewImage(media.url);
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                />
+                                <button
+                                    type="button"
+                                    className={styles.removeImageBtn}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRemoveExisting?.(media.id);
+                                    }}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ))}
+
+                        {/* New File Previews */}
                         {imagePreviews.map((preview, index) => (
-                            <div key={index} className={styles.imagePreviewItem}>
+                            <div key={`new-${index}`} className={styles.imagePreviewItem}>
                                 <img
                                     src={preview}
                                     alt={`Preview ${index + 1}`}
@@ -330,7 +363,8 @@ export default function MediaUploader({
                                 </button>
                             </div>
                         ))}
-                        {files.length < 10 && (
+
+                        {totalMediaCount < 10 && (
                             <div className={styles.addMoreImages} onClick={() => !disabled && fileInputRef.current?.click()}>
                                 <span>+</span>
                             </div>
@@ -341,23 +375,26 @@ export default function MediaUploader({
 
             {/* Full Screen Preview */}
             {previewImage && (
-                <div
-                    className={styles.imageModalOverlay}
-                    onClick={() => setPreviewImage(null)}
-                >
+                typeof document !== 'undefined' ? createPortal(
                     <div
-                        className={styles.imageModalContent}
-                        onClick={(e) => e.stopPropagation()}
+                        className={styles.imageModalOverlay}
+                        onClick={() => setPreviewImage(null)}
                     >
-                        <button
-                            className={styles.closeModalBtn}
-                            onClick={() => setPreviewImage(null)}
+                        <div
+                            className={styles.imageModalContent}
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            ✕
-                        </button>
-                        <img src={previewImage} alt="Full size preview" />
-                    </div>
-                </div>
+                            <button
+                                className={styles.closeModalBtn}
+                                onClick={() => setPreviewImage(null)}
+                            >
+                                ✕
+                            </button>
+                            <img src={previewImage} alt="Full size preview" />
+                        </div>
+                    </div>,
+                    document.body
+                ) : null
             )}
         </>
     );
