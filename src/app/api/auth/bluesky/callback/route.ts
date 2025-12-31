@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
         // 3. Get user info (Handle) using DPoP-signed request
         // Standard AtpAgent doesn't support our manual DPoP easily, so we fetch directly.
         const profileRes = await dpopFetch(
-            'https://bsky.social/xrpc/app.bsky.actor.getProfile',
+            `https://bsky.social/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(tokens.did)}`,
             'GET',
             dpopKey.privateKey,
             dpopKey.publicKey,
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
         if (!profileRes.ok) {
             const txt = await profileRes.text();
             console.error('Failed to fetch profile:', txt);
-            throw new Error('Failed to fetch Bluesky profile');
+            throw new Error(`Failed to fetch Bluesky profile: ${txt}`);
         }
 
         const profile = await profileRes.json();

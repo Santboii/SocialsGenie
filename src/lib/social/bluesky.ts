@@ -64,9 +64,12 @@ export async function createDpopProof(
 ): Promise<string> {
     const jwk = await jose.exportJWK(publicKey);
 
+    // DPoP spec: htu must be the HTTP URI without query or fragment components
+    const htu = url.split('?')[0].split('#')[0];
+
     return new jose.SignJWT({
         htm: method,
-        htu: url,
+        htu: htu,
         nonce: nonce,
     })
         .setProtectedHeader({ alg: 'ES256', typ: 'dpop+jwt', jwk: jwk })

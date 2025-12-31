@@ -32,4 +32,4 @@
 - [ ] **Browser Extension**: Quick share from any page.
 - [ ] **Review Pricing**: Finalize pricing tiers and payment flow, quantify AI usage limits for each tier.
 - [ ] **Brand DNA Improvements**: Improve brand DNA generation and integration
-
+- [ ] **Disaster Prevention** Think through potential issues and implement measures to prevent them (e.g. catastrohpic data loss, etc.)
