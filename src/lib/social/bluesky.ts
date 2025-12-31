@@ -1,5 +1,6 @@
 import { AtpAgent } from '@atproto/api';
 import crypto from 'crypto';
+import sharp from 'sharp';
 // We need to use the OAuthClient to generate DPoP proofs correctly, 
 // OR simpler: manually generate the JWT if we want to avoid heavy deps,
 // but @atproto/oauth-client-node is the official way.
