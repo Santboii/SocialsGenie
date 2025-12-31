@@ -98,28 +98,39 @@ export async function dpopFetch(
 ): Promise<Response> {
     const makeRequest = async (nonce?: string) => {
         const proof = await createDpopProof(url, method, privateKey, publicKey, nonce);
+        const headers: Record<string, string> = {
+            ...extraHeaders,
+            'DPoP': proof,
+        };
+
+        if (nonce) console.log('dpopFetch: Sending request with nonce:', nonce);
+
         return fetch(url, {
             method,
-            headers: {
-                ...extraHeaders,
-                'DPoP': proof,
-            },
+            headers: headers,
             body: body,
         });
     };
 
-    // 1. Try without nonce (or cached nonce if we implemented cache)
+    // 1. Try without nonce
     let response = await makeRequest();
 
-    // 2. If 401 and requests nonce, retry
-    if (response.status === 401) {
-        const authHeader = response.headers.get('www-authenticate');
-        const nonceHeader = response.headers.get('dpop-nonce');
+    // 2. If 401 (or 400) and requests nonce, retry
+    if (response.status === 401 || response.status === 400) {
+        const nonceHeader = response.headers.get('dpop-nonce') || response.headers.get('DPoP-Nonce');
 
-        // The server might send the nonce in 'DPoP-Nonce' header even on error
+        console.log(`dpopFetch: Request failed with ${response.status}. Nonce header: ${nonceHeader ? 'Found' : 'Missing'}`);
+
         if (nonceHeader) {
-            console.log('Retrying DPoP request with new nonce');
+            console.log('dpopFetch: Retrying with new nonce:', nonceHeader);
             response = await makeRequest(nonceHeader);
+        } else {
+            // Try to peek error body
+            try {
+                const clone = response.clone();
+                const errJson = await clone.json();
+                console.error('dpopFetch: Error body (no nonce header):', errJson);
+            } catch (e) { /* ignore */ }
         }
     }
 
