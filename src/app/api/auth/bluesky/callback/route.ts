@@ -11,13 +11,17 @@ import {
  * Handles Bluesky OAuth 2.0 callback
  * GET /api/auth/bluesky/callback
  */
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
+    console.log('--- Bluesky Callback Debug ---');
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    console.log('Callback Base URL:', baseUrl);
     const redirectUri = `${baseUrl}/api/auth/bluesky/callback`;
 
     // Handle authorization errors
@@ -29,6 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!code || !state) {
+        console.error('Missing code or state');
         return NextResponse.redirect(
             `${baseUrl}/settings?error=${encodeURIComponent('Missing authorization code or state')}`
         );
@@ -40,14 +45,19 @@ export async function GET(request: NextRequest) {
         const storedState = cookieStore.get('bluesky_oauth_state')?.value;
         const codeVerifier = cookieStore.get('bluesky_code_verifier')?.value;
 
+        console.log('Stored State:', storedState ? 'Found' : 'Missing');
+        console.log('Code Verifier:', codeVerifier ? 'Found' : 'Missing');
+
         // Validate state to prevent CSRF
         if (state !== storedState) {
+            console.error('Invalid state parameter');
             return NextResponse.redirect(
                 `${baseUrl}/settings?error=${encodeURIComponent('Invalid state parameter')}`
             );
         }
 
         if (!codeVerifier) {
+            console.error('Missing code verifier');
             return NextResponse.redirect(
                 `${baseUrl}/settings?error=${encodeURIComponent('Missing code verifier')}`
             );
@@ -55,13 +65,18 @@ export async function GET(request: NextRequest) {
 
         // Exchange code for tokens
         const tokens = await exchangeCodeForTokens(code, codeVerifier, redirectUri);
+        console.log('Tokens exchanged successfully');
 
         // Get user info (Handle, Avatar, etc.)
         const profile = await getBlueskyProfile(tokens.accessToken, tokens.did);
+        console.log('Profile fetched:', profile.handle);
 
         // Get authenticated Supabase user
         const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        console.log('Supabase User:', user?.id || 'None');
+        if (authError) console.error('Supabase Auth Error:', authError);
 
         if (authError || !user) {
             return NextResponse.redirect(
