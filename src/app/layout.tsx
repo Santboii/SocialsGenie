@@ -1,3 +1,4 @@
+import ParticleBackground from '@/components/ui/ParticleBackground';
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppWrapper } from "@/components/layout/AppWrapper";

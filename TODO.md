@@ -30,4 +30,6 @@
 - [ ] **Analytics Dashboard**: Aggregate metrics (likes, views) from all platforms.
 - [ ] **Team Collaboration**: Allow multiple users to manage one workspace.
 - [ ] **Browser Extension**: Quick share from any page.
+- [ ] **Review Pricing**: Finalize pricing tiers and payment flow, quantify AI usage limits for each tier.
 - [ ] **Brand DNA Improvements**: Improve brand DNA generation and integration
+

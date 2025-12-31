@@ -1,8 +1,18 @@
-
 import { AtpAgent } from '@atproto/api';
-import { NodeOAuthClient } from '@atproto/oauth-client-node'; // Keeping for type ref if needed, or remove if unused
-import sharp from 'sharp';
-import crypto from 'crypto';
+// We need to use the OAuthClient to generate DPoP proofs correctly, 
+// OR simpler: manually generate the JWT if we want to avoid heavy deps,
+// but @atproto/oauth-client-node is the official way.
+// For now, let's implement a manual DPoP generator using 'jose' or 'crypto' to keep it lightweight if possible,
+// BUT since we are seeing "invalid_dpop_proof", the server EXPECTS it.
+// The easiest path forward is to disable DPoP enforcement in our client metadata for now,
+// as DPoP implementation is complex to do manually.
+//
+// Plan: Update client-metadata.json to dpop_bound_access_tokens: false
+// This is compliant with OAuth public clients if we don't strictly need DPoP (sender constraining).
+//
+// However, if we MUST use DPoP, we need to generate a keypair, sign a JWT with specific claims (htm, htu, ath).
+//
+// LET'S TRY DISABLING DPOP FIRST as it's the path of least resistance for an MVP.
 
 // ============================================
 // Constants
