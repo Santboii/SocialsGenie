@@ -31,9 +31,8 @@ export class GoogleGeminiService implements AIProvider {
     constructor(apiKey: string) {
         this.genAI = new GoogleGenerativeAI(apiKey);
 
-        // Upgrading to Gemini 3 Flash (Standard 2026 Model)
-        // Gemini 3 Flash is optimized for high-volume, multimodal tasks.
-        this.textModel = this.genAI.getGenerativeModel({ model: 'gemini-3-flash' });
+        // Using flash models explicitly with latest alias to avoid 404s
+        this.textModel = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     }
 
     async generatePost(params: PostGenerationParams): Promise<GeneratedPost> {
@@ -73,23 +72,18 @@ Do not wrap in markdown code blocks. Just valid JSON.
             // Clean up markdown if present
             const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
-            console.log('Gemini Raw Response:', cleanText);
-
             return JSON.parse(cleanText) as GeneratedPost;
         } catch (error) {
             console.error('Error generating post text:', error);
-            // Log the raw error details if available
-            if ((error as any).response) {
-                console.error('Gemini Error Response:', JSON.stringify((error as any).response, null, 2));
-            }
             throw new Error('Failed to generate post content');
         }
     }
 
     async generateImage(prompt: string, aspectRatio: string = '1:1'): Promise<string> {
         try {
-            // Use Gemini 3 Flash for image generation (Multimodal)
-            const imageModel = this.genAI.getGenerativeModel({ model: 'gemini-3-flash' });
+            // Use the newly confirmed Gemini 2.5 Flash Image model ("Nano Banana")
+            // This natively generates images without needing Vertex AI
+            const imageModel = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
 
             const result = await imageModel.generateContent(prompt);
             const response = await result.response;
