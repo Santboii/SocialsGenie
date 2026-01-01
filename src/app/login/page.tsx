@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import styles from './page.module.css';
 
@@ -45,9 +46,23 @@ export default function LoginPage() {
 
     return (
         <div className={styles.container}>
+            <div className={styles.bgOrbs}>
+                <div className={styles.orb1}></div>
+                <div className={styles.orb2}></div>
+                <div className={styles.orb3}></div>
+            </div>
             <div className={styles.card}>
                 <div className={styles.header}>
-                    <span className={styles.logo}>🚀</span>
+                    <div className={styles.logo}>
+                        <Image
+                            src="/logo.png"
+                            alt="SocialsGenie Logo"
+                            width={100}
+                            height={100}
+                            style={{ width: 'auto', height: '100px' }}
+                            priority
+                        />
+                    </div>
                     <h1>SocialsGenie</h1>
                     <p>AI-Powered Social Media Management</p>
                 </div>
