@@ -31,8 +31,8 @@ export class GoogleGeminiService implements AIProvider {
     constructor(apiKey: string) {
         this.genAI = new GoogleGenerativeAI(apiKey);
 
-        // Using flash models explicitly with latest alias to avoid 404s
-        this.textModel = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        // Using Gemini 3 Flash Preview as confirmed by model list
+        this.textModel = this.genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
     }
 
     async generatePost(params: PostGenerationParams): Promise<GeneratedPost> {
