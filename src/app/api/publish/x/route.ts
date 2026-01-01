@@ -81,13 +81,44 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Handle Media Attachments
+        const mediaIds: string[] = [];
+        if (postId) {
+            const { data: post, error: postError } = await supabase
+                .from('posts')
+                .select('content, media')
+                .eq('id', postId)
+                .single();
+
+            if (post && post.media && post.media.length > 0) {
+                // X allows up to 4 photos
+                const attachments = post.media.slice(0, 4);
+
+                // Upload in parallel
+                // Fail-fast: If any image fails, the whole post fails.
+                const uploadedIds = await Promise.all(attachments.map(async (media: any) => {
+                    // Fetch image buffer
+                    const fileRes = await fetch(media.url);
+                    if (!fileRes.ok) throw new Error(`Failed to fetch image: ${media.url}`);
+                    const arrayBuffer = await fileRes.arrayBuffer();
+                    const buffer = Buffer.from(arrayBuffer);
+
+                    // Upload to X
+                    return import('@/lib/social/x').then(m => m.uploadMedia(accessToken, buffer, media.type));
+                }));
+
+                mediaIds.push(...uploadedIds);
+            }
+        }
+
         // Post the tweet
-        const tweet = await postTweet(accessToken, tweetText);
+        const tweet = await postTweet(accessToken, tweetText, mediaIds);
 
         return NextResponse.json({
             success: true,
             tweetId: tweet.id,
             tweetText: tweet.text,
+            mediaIdsCount: mediaIds.length
         });
 
     } catch (error) {
