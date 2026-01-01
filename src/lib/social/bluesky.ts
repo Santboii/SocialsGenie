@@ -1,4 +1,4 @@
-import { AtpAgent } from '@atproto/api';
+import { AtpAgent, ComAtprotoServerDescribeServer } from '@atproto/api';
 import crypto from 'crypto';
 import * as jose from 'jose';
 import sharp from 'sharp';
@@ -27,6 +27,9 @@ import { SocialLogger } from './logger';
 // A full federation implementation would need handle resolution first.
 const BSKY_AUTH_URL = 'https://bsky.social/oauth/authorize';
 const BSKY_TOKEN_URL = 'https://bsky.social/oauth/token';
+
+// Simple in-memory cache for PDS resolution to avoid repeating lookups
+const PDS_CACHE = new Map<string, string>();
 
 const CLIENT_ID = process.env.BLUESKY_CLIENT_ID;
 // NOTE: Bluesky OAuth Client IDs are often URLs (e.g. https://app.com/client-metadata.json).
@@ -364,6 +367,65 @@ export async function getBlueskyProfile(accessToken: string, did: string) {
 }
 
 // ============================================
+// PDS Resolution
+// ============================================
+
+/**
+ * Resolves the user's PDS endpoint from their DID.
+ * Supports did:plc and did:web.
+ * Falls back to bsky.social if resolution fails.
+ */
+export async function resolvePdsEndpoint(did: string): Promise<string> {
+    if (PDS_CACHE.has(did)) {
+        return PDS_CACHE.get(did)!;
+    }
+
+    const context = { platform: 'bluesky' as const, action: 'resolve_pds', requestId: crypto.randomUUID() };
+
+    try {
+        let pdsEndpoint: string | undefined;
+
+        // 1. Try resolving via PLC Directory for did:plc
+        if (did.startsWith('did:plc:')) {
+            const res = await fetch(`https://plc.directory/${did}`);
+            if (res.ok) {
+                const data = await res.json();
+                const service = data.service?.find((s: any) => s.id === '#atproto_pds' || s.type === 'AtprotoPersonalDataServer');
+                if (service?.serviceEndpoint) {
+                    pdsEndpoint = service.serviceEndpoint;
+                }
+            }
+        }
+        // 2. Try resolving via .well-known for did:web
+        else if (did.startsWith('did:web:')) {
+            const domain = did.replace('did:web:', '');
+            const res = await fetch(`https://${domain}/.well-known/did.json`);
+            if (res.ok) {
+                const data = await res.json();
+                const service = data.service?.find((s: any) => s.id === '#atproto_pds' || s.type === 'AtprotoPersonalDataServer');
+                if (service?.serviceEndpoint) {
+                    pdsEndpoint = service.serviceEndpoint;
+                }
+            }
+        }
+
+        if (pdsEndpoint) {
+            SocialLogger.info(context, 'Resolved PDS endpoint', { did, pdsEndpoint });
+            PDS_CACHE.set(did, pdsEndpoint);
+            return pdsEndpoint;
+        }
+
+        SocialLogger.warn(context, 'Could not resolve PDS, falling back to bsky.social', { did });
+    } catch (err) {
+        SocialLogger.error(context, 'Failed to resolve PDS', err);
+    }
+
+    // Fallback default
+    return 'https://bsky.social';
+}
+
+
+// ============================================
 // Publishing / API
 // ============================================
 
@@ -374,6 +436,9 @@ export async function postBlueskyRecord(
     images: { buffer: Buffer, alt?: string }[] = [],
     dpopKey?: DpopKeyPair
 ) {
+    // 0. Resolve PDS Endpoint
+    const pdsUrl = await resolvePdsEndpoint(did);
+
     // 1. Upload Images
     const uploadedImages = [];
     for (const img of images) {
@@ -384,9 +449,12 @@ export async function postBlueskyRecord(
         // Better to sign it.
         let uploadRes: Response;
 
+        // Ensure standard URL format (remove trailing slash if present)
+        const serviceUrl = pdsUrl.replace(/\/$/, '');
+
         if (dpopKey) {
             uploadRes = await dpopFetch(
-                'https://bsky.social/xrpc/com.atproto.repo.uploadBlob',
+                `${serviceUrl}/xrpc/com.atproto.repo.uploadBlob`,
                 'POST',
                 dpopKey.privateKey,
                 dpopKey.publicKey,
@@ -397,7 +465,7 @@ export async function postBlueskyRecord(
                 }
             );
         } else {
-            uploadRes = await fetch('https://bsky.social/xrpc/com.atproto.repo.uploadBlob', {
+            uploadRes = await fetch(`${serviceUrl}/xrpc/com.atproto.repo.uploadBlob`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -438,9 +506,12 @@ export async function postBlueskyRecord(
 
     let postRes: Response;
 
+    // Ensure standard URL format
+    const serviceUrl = pdsUrl.replace(/\/$/, '');
+
     if (dpopKey) {
         postRes = await dpopFetch(
-            'https://bsky.social/xrpc/com.atproto.repo.createRecord',
+            `${serviceUrl}/xrpc/com.atproto.repo.createRecord`,
             'POST',
             dpopKey.privateKey,
             dpopKey.publicKey,
@@ -451,7 +522,7 @@ export async function postBlueskyRecord(
             }
         );
     } else {
-        postRes = await fetch('https://bsky.social/xrpc/com.atproto.repo.createRecord', {
+        postRes = await fetch(`${serviceUrl}/xrpc/com.atproto.repo.createRecord`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,

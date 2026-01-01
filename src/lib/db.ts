@@ -14,6 +14,7 @@
 
 import { getSupabase } from './supabase';
 import type { Post, PlatformId, Activity, MediaAttachment } from '@/types';
+import { SocialLogger } from './social/logger';
 
 // ============================================
 // Error Types
@@ -372,11 +373,17 @@ export async function deletePost(id: string): Promise<void> {
  * Publish a post to connected platforms and update status
  */
 export async function publishPost(id: string): Promise<Post> {
+    const requestId = globalThis.crypto.randomUUID();
+    const context = { platform: 'system' as const, action: 'publish_orchestrator', requestId, postId: id };
+
     // Get the post first to check platforms and content
     const post = await getPost(id);
     if (!post) {
+        SocialLogger.warn(context, 'Post not found');
         throw new Error('Post not found');
     }
+
+    SocialLogger.info(context, 'Publishing post', { platforms: post.platforms });
 
     const results: { platform: string; success: boolean; error?: string }[] = [];
 
@@ -402,12 +409,15 @@ export async function publishPost(id: string): Promise<Post> {
             }
 
             results.push({ platform: 'facebook', success: true });
+            SocialLogger.info({ ...context, platform: 'facebook' }, 'Published to Facebook');
         } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
             results.push({
                 platform: 'facebook',
                 success: false,
-                error: error instanceof Error ? error.message : 'Unknown error'
+                error: msg
             });
+            SocialLogger.error({ ...context, platform: 'facebook' }, 'Failed to publish to Facebook', error);
         }
     }
 
@@ -432,12 +442,15 @@ export async function publishPost(id: string): Promise<Post> {
             }
 
             results.push({ platform: 'twitter', success: true });
+            SocialLogger.info({ ...context, platform: 'twitter' }, 'Published to X');
         } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
             results.push({
                 platform: 'twitter',
                 success: false,
-                error: error instanceof Error ? error.message : 'Unknown error'
+                error: msg
             });
+            SocialLogger.error({ ...context, platform: 'twitter' }, 'Failed to publish to X', error);
         }
     }
 
@@ -463,12 +476,15 @@ export async function publishPost(id: string): Promise<Post> {
             }
 
             results.push({ platform: 'linkedin', success: true });
+            SocialLogger.info({ ...context, platform: 'linkedin' }, 'Published to LinkedIn');
         } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
             results.push({
                 platform: 'linkedin',
                 success: false,
-                error: error instanceof Error ? error.message : 'Unknown error'
+                error: msg
             });
+            SocialLogger.error({ ...context, platform: 'linkedin' }, 'Failed to publish to LinkedIn', error);
         }
     }
 
@@ -494,12 +510,15 @@ export async function publishPost(id: string): Promise<Post> {
             }
 
             results.push({ platform: 'bluesky', success: true });
+            SocialLogger.info({ ...context, platform: 'bluesky' }, 'Published to Bluesky');
         } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
             results.push({
                 platform: 'bluesky',
                 success: false,
-                error: error instanceof Error ? error.message : 'Unknown error'
+                error: msg
             });
+            SocialLogger.error({ ...context, platform: 'bluesky' }, 'Failed to publish to Bluesky', error);
         }
     }
 
@@ -529,10 +548,13 @@ export async function publishPost(id: string): Promise<Post> {
         const failedPlatforms = results.filter(r => !r.success);
         const errorMsg = failedPlatforms.map(f => `${f.platform}: ${f.error}`).join('; ');
         if (allFailed) {
+            SocialLogger.error(context, 'All platforms failed', { errorMsg });
             throw new Error(`Failed to publish: ${errorMsg}`);
         }
         // Partial success - could show a warning
-        console.warn('Some platforms failed:', errorMsg);
+        SocialLogger.warn(context, 'Partial success', { errorMsg });
+    } else {
+        SocialLogger.info(context, 'Publish complete');
     }
 
     return updatedPost;
