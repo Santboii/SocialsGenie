@@ -129,14 +129,29 @@ export default function PostPopover({ post, position, onClose, onEdit, onPostUpd
 
                 {/* Content Preview */}
                 <div className={styles.content}>
+                    {post.media && post.media.length > 0 && (
+                        <div className={styles.previewImageWrapper}>
+                            <img
+                                src={post.media[0].url || post.media[0].thumbnail}
+                                alt="Post media"
+                                className={styles.previewImage}
+                            />
+                        </div>
+                    )}
                     {post.content}
                 </div>
 
                 {/* Actions */}
                 <div className={styles.actions}>
-                    <button className={styles.editBtn} onClick={() => onEdit(post)}>
-                        ✏️ Edit
-                    </button>
+                    {post.status !== 'published' ? (
+                        <button className={styles.editBtn} onClick={() => onEdit(post)}>
+                            ✏️ Edit
+                        </button>
+                    ) : (
+                        <button className={styles.editBtn} onClick={() => onEdit(post)}>
+                            👁️ View
+                        </button>
+                    )}
                     {post.status === 'scheduled' && (
                         <button className={styles.publishBtn} onClick={handlePublishNow}>
                             🚀 Publish

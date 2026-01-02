@@ -10,5 +10,6 @@ export function useWeeklySlots() {
             return res.json() as Promise<any[]>;
         },
         staleTime: 1000 * 60 * 5, // 5 minutes
+        refetchOnWindowFocus: false, // Prevent overwriting optimistic state on focus
     });
 }

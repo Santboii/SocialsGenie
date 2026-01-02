@@ -260,10 +260,12 @@ export default function EditPostPage({ params }: EditPostPageProps) {
         <div className={styles.composerContainer}>
             <div className={styles.editorSection}>
                 <div className={styles.sectionHeader}>
-                    <h2>Edit Post</h2>
-                    <button className={styles.deleteBtn} onClick={handleDelete} type="button">
-                        🗑️ Delete
-                    </button>
+                    <h2>{post.status === 'published' ? 'View Post' : 'Edit Post'}</h2>
+                    {post.status !== 'published' && (
+                        <button className={styles.deleteBtn} onClick={handleDelete} type="button">
+                            🗑️ Delete
+                        </button>
+                    )}
                 </div>
 
                 <div className={styles.platformToggle}>
@@ -275,7 +277,7 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                                 className={`${styles.platformBtn} ${selectedPlatforms.includes(platform.id) ? styles.active : ''} ${isDisabled ? styles.disabled : ''}`}
                                 onClick={() => togglePlatform(platform.id)}
                                 type="button"
-                                disabled={!!isDisabled}
+                                disabled={!!isDisabled || post.status === 'published'}
                                 title={isDisabled ? 'Not available for this library' : ''}
                                 style={isDisabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                             >
@@ -329,13 +331,15 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                                 <p className={styles.tabDescription}>
                                     ✏️ Customizing for <strong>{PLATFORMS.find(p => p.id === activeTab)?.name}</strong> only
                                 </p>
-                                <button
-                                    className={styles.revertBtn}
-                                    onClick={() => clearPlatformContent(activeTab as PlatformId)}
-                                    type="button"
-                                >
-                                    ↩ Use shared
-                                </button>
+                                {post.status !== 'published' && (
+                                    <button
+                                        className={styles.revertBtn}
+                                        onClick={() => clearPlatformContent(activeTab as PlatformId)}
+                                        type="button"
+                                    >
+                                        ↩ Use shared
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -345,9 +349,10 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                         placeholder={activeTab === 'shared' ? "What's on your mind?" : `Customize for ${PLATFORMS.find(p => p.id === activeTab)?.name}...`}
                         value={getCurrentContent()}
                         onChange={(e) => handleContentChange(e.target.value)}
+                        readOnly={post.status === 'published'}
                     />
 
-                    {activeTab !== 'shared' && (
+                    {activeTab !== 'shared' && post.status !== 'published' && (
                         <div className={styles.charCountBar}>
                             {(() => {
                                 const limit = getCharacterLimit(activeTab as PlatformId);
@@ -369,36 +374,63 @@ export default function EditPostPage({ params }: EditPostPageProps) {
 
                     {/* Media Uploader */}
                     <div className="mb-4">
-                        <MediaUploader
-                            files={mediaFiles}
-                            onFilesChange={setMediaFiles}
-                            maxMedia={getMaxMedia()}
-                            sharedContent={sharedContent}
-                            existingMedia={existingMedia}
-                            onRemoveExisting={(id) => setExistingMedia(prev => prev.filter(m => m.id !== id))}
-                        />
+                        {post.status !== 'published' ? (
+                            <MediaUploader
+                                files={mediaFiles}
+                                onFilesChange={setMediaFiles}
+                                maxMedia={getMaxMedia()}
+                                sharedContent={sharedContent}
+                                existingMedia={existingMedia}
+                                onRemoveExisting={(id) => setExistingMedia(prev => prev.filter(m => m.id !== id))}
+                            />
+                        ) : (
+                            (existingMedia.length > 0) && (
+                                <div className={styles.readOnlyMedia}>
+                                    {existingMedia.map(media => (
+                                        <img key={media.id} src={media.url} alt="Media" className={styles.previewImage} />
+                                    ))}
+                                </div>
+                            )
+                        )}
                     </div>
 
                     <div className={styles.actions}>
-                        <button className="btn btn-ghost" onClick={() => router.push('/')} type="button">
-                            Cancel
-                        </button>
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => handleSave('draft')}
-                            disabled={isSubmitting || !sharedContent.trim()}
-                            type="button"
-                        >
-                            💾 Save Draft
-                        </button>
-                        <button
-                            className="btn btn-primary btn-lg"
-                            onClick={() => handleSave('scheduled')}
-                            disabled={isSubmitting || !sharedContent.trim() || selectedPlatforms.length === 0 || hasAnyError()}
-                            type="button"
-                        >
-                            {isSubmitting ? '⏳ Saving...' : hasAnyError() ? '⚠️ Fix Errors' : '✓ Save Changes'}
-                        </button>
+                        {post.status !== 'published' && (
+                            <button className="btn btn-ghost" onClick={() => router.push('/')} type="button">
+                                Cancel
+                            </button>
+                        )}
+
+                        {post.status === 'published' ? (
+                            <div className={styles.publishedStatusBadge}>
+                                <div className={styles.publishedIcon}>✓</div>
+                                <div className={styles.publishedInfo}>
+                                    <span className={styles.publishedLabel}>Published</span>
+                                    <span className={styles.publishedDate}>
+                                        {post.publishedAt ? new Date(post.publishedAt).toLocaleString() : 'Recently'}
+                                    </span>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => handleSave('draft')}
+                                    disabled={isSubmitting || !sharedContent.trim()}
+                                    type="button"
+                                >
+                                    💾 Save Draft
+                                </button>
+                                <button
+                                    className="btn btn-primary btn-lg"
+                                    onClick={() => handleSave('scheduled')}
+                                    disabled={isSubmitting || !sharedContent.trim() || selectedPlatforms.length === 0 || hasAnyError()}
+                                    type="button"
+                                >
+                                    {isSubmitting ? '⏳ Saving...' : hasAnyError() ? '⚠️ Fix Errors' : '✓ Save Changes'}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

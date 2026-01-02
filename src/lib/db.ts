@@ -282,9 +282,28 @@ export interface UpdatePostInput {
  * @throws {AuthenticationError} if user is not logged in
  * @throws {DatabaseError} if update fails
  */
+// Update an existing post
+// @throws {AuthenticationError} if user is not logged in
+// @throws {DatabaseError} if update fails
 export async function updatePost(id: string, input: UpdatePostInput): Promise<Post> {
     const userId = await getCurrentUserId();
     const supabase = getSupabase();
+
+    // Check current status first to prevent editing published posts
+    // We do a lightweight selection of just the status
+    const { data: currentPost, error: fetchError } = await supabase
+        .from('posts')
+        .select('status')
+        .eq('id', id)
+        .single();
+
+    if (fetchError || !currentPost) {
+        throw new DatabaseError('Post not found');
+    }
+
+    if (currentPost.status === 'published') {
+        throw new DatabaseError('Cannot edit a published post');
+    }
 
     // Build update object
     const updates: Record<string, unknown> = {

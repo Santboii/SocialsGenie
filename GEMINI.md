@@ -9,7 +9,7 @@ SocialsGenie is an AI-powered social media management app built with Next.js 16,
 - Ensure all generated code and logic are strictly grounded in the provided codebase context.
 
 ## Current Year
-**2025** - Use this for all dates and references.
+**2026** - Use this for all dates and references.
 
 ## Tech Stack
 Check `package.json` for current versions:
@@ -44,6 +44,18 @@ if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 // 3. Execute logic
 // 4. Return NextResponse.json()
 ```
+
+### Scheduler Logic
+- **Drag & Drop**: Uses `@dnd-kit` (Core + Utilities).
+- **Optimistic UI**: 
+  - Update `useQuery` cache immediately via `queryClient.setQueryData`.
+  - Do NOT trigger immediate refetch on success (prevents "teleporting" / stale data overwrite).
+  - Only refetch on error to rollback.
+  - Use `DragOverlay` with captured width to prevent visual resizing during drag.
+
+### State Management
+- **React Query**: Primary server state manager.
+- **Optimistic Updates**: Use `setQueryData` for instant mutations where the "single source of truth" latency is unacceptable (e.g., drag and drop).
 
 ### Styling
 Use CSS Modules with design tokens from `globals.css`:
