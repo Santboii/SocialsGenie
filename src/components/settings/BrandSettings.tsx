@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBrandProfile, queryKeys } from '@/hooks/useQueries';
@@ -105,6 +106,12 @@ export default function BrandSettings() {
 
     return (
         <div className={styles.container}>
+            <nav className={styles.breadcrumb}>
+                <Link href="/settings" className={styles.breadcrumbLink}>Settings</Link>
+                <span className={styles.breadcrumbSeparator}>›</span>
+                <span className={styles.breadcrumbCurrent}>Brand DNA</span>
+            </nav>
+
             <div className={styles.header}>
                 <h1 className={styles.title}>
                     <span className={styles.titleGradient}>Brand DNA</span> 🧬
@@ -164,8 +171,8 @@ export default function BrandSettings() {
                                         type="button"
                                         onClick={() => toggleTone(t)}
                                         className={`${styles.toneBadge} ${profile.tone?.includes(t)
-                                                ? styles.toneBadgeActive
-                                                : styles.toneBadgeInactive
+                                            ? styles.toneBadgeActive
+                                            : styles.toneBadgeInactive
                                             }`}
                                     >
                                         {profile.tone?.includes(t) ? '✓ ' : '+ '}{t}

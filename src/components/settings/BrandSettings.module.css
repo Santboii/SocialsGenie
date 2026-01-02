@@ -1,3 +1,31 @@
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-6);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.breadcrumbLink {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.breadcrumbLink:hover {
+    color: var(--accent-purple);
+}
+
+.breadcrumbSeparator {
+    color: var(--text-muted);
+}
+
+.breadcrumbCurrent {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
 .container {
     width: 100%;
     max-width: 56rem;
