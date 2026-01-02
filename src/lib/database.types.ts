@@ -47,6 +47,7 @@ export interface Database {
                     post_id: string
                     platform: string
                     custom_content: string | null
+                    metadata: Json
                     created_at: string
                 }
                 Insert: {
@@ -54,6 +55,7 @@ export interface Database {
                     post_id: string
                     platform: string
                     custom_content?: string | null
+                    metadata?: Json
                     created_at?: string
                 }
                 Update: {
@@ -61,6 +63,7 @@ export interface Database {
                     post_id?: string
                     platform?: string
                     custom_content?: string | null
+                    metadata?: Json
                     created_at?: string
                 }
             }

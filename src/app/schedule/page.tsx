@@ -9,6 +9,7 @@ import { DndContext, DragEndEvent, useDraggable, useDroppable, DragOverlay, Drag
 import { CSS } from '@dnd-kit/utilities';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/hooks/queries/constants';
+import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0-23
@@ -419,7 +420,7 @@ export default function SchedulePage() {
                                                     onClick={() => togglePlatform(platform.id as PlatformId)}
                                                     title={platform.name}
                                                 >
-                                                    {platform.icon}
+                                                    {getPlatformIcon(platform.id, 16)}
                                                 </div>
                                             );
                                         })}

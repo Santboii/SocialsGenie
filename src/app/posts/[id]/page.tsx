@@ -7,6 +7,7 @@ import { PlatformId, PLATFORMS, getCharacterLimit, Post, MediaAttachment, genera
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 import { getPost, updatePost, deletePost } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
+import { useConnections } from '@/hooks/useQueries';
 import styles from '@/components/composer/Composer.module.css';
 import MediaUploader from '@/components/composer/MediaUploader';
 
@@ -22,6 +23,9 @@ export default function EditPostPage({ params }: EditPostPageProps) {
     const [loading, setLoading] = useState(true);
     const [post, setPost] = useState<Post | null>(null);
 
+    // Get connected accounts for preview
+    const { data: connectedAccounts = [] } = useConnections();
+
     const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformId[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [sharedContent, setSharedContent] = useState('');
@@ -32,6 +36,7 @@ export default function EditPostPage({ params }: EditPostPageProps) {
         facebook: '',
         threads: '',
         bluesky: '',
+        pinterest: '',
     });
     const [activeTab, setActiveTab] = useState<ContentMode>('shared');
     const [error, setError] = useState<string | null>(null);
@@ -270,6 +275,11 @@ export default function EditPostPage({ params }: EditPostPageProps) {
 
                 <div className={styles.platformToggle}>
                     {PLATFORMS.map(platform => {
+                        // If published, only show platforms that were actually used
+                        if (post.status === 'published' && !selectedPlatforms.includes(platform.id)) {
+                            return null;
+                        }
+
                         const isDisabled = allowedPlatforms && !allowedPlatforms.includes(platform.id);
                         return (
                             <button
@@ -288,50 +298,27 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                     })}
                 </div>
 
-                <div className={styles.contentTabs}>
-                    <button
-                        className={`${styles.contentTab} ${activeTab === 'shared' ? styles.activeTab : ''}`}
-                        onClick={() => setActiveTab('shared')}
-                        type="button"
-                    >
-                        <span>📝</span>
-                        <span>Shared Content</span>
-                    </button>
-
-                    {selectedPlatforms.map(platformId => {
-                        const platform = PLATFORMS.find(p => p.id === platformId)!;
-                        const content = getContentForPlatform(platformId);
-                        const status = getCharStatus(content, platformId);
-                        const isCustom = hasCustomContent(platformId);
-
-                        return (
-                            <button
-                                key={platformId}
-                                className={`${styles.contentTab} ${activeTab === platformId ? styles.activeTab : ''} ${status === 'error' ? styles.errorTab : ''}`}
-                                onClick={() => initializePlatformContent(platformId)}
-                                type="button"
-                            >
-                                <span style={{ color: platform.color }}>{getPlatformIcon(platform.id, 16)}</span>
-                                <span>{platform.name}</span>
-                                {isCustom && <span className={styles.customBadge}>✎</span>}
-                                {status === 'error' && <span className={styles.errorIndicator}>!</span>}
-                            </button>
-                        );
-                    })}
-                </div>
-
                 <div className={styles.editorCard}>
-                    <div className={styles.tabInfo}>
-                        {activeTab === 'shared' ? (
-                            <p className={styles.tabDescription}>
-                                ✨ This content will be used for all platforms unless you customize individually.
-                            </p>
-                        ) : (
-                            <div className={styles.tabDescriptionRow}>
+                    {post.status !== 'published' && (
+                        <div className={styles.tabInfo}>
+                            {selectedPlatforms.length === 1 ? (
+                                <div className={styles.singlePlatformHeader}>
+                                    <span style={{ color: PLATFORMS.find(p => p.id === selectedPlatforms[0])?.color, fontSize: '1.2em' }}>
+                                        {getPlatformIcon(selectedPlatforms[0], 24)}
+                                    </span>
+                                    <p className={styles.tabDescription}>
+                                        Writing post for <strong>{PLATFORMS.find(p => p.id === selectedPlatforms[0])?.name}</strong>
+                                    </p>
+                                </div>
+                            ) : activeTab === 'shared' ? (
                                 <p className={styles.tabDescription}>
-                                    ✏️ Customizing for <strong>{PLATFORMS.find(p => p.id === activeTab)?.name}</strong> only
+                                    ✨ This content will be used for all platforms unless you customize individually.
                                 </p>
-                                {post.status !== 'published' && (
+                            ) : (
+                                <div className={styles.tabDescriptionRow}>
+                                    <p className={styles.tabDescription}>
+                                        ✏️ Customizing for <strong>{PLATFORMS.find(p => p.id === activeTab)?.name}</strong> only
+                                    </p>
                                     <button
                                         className={styles.revertBtn}
                                         onClick={() => clearPlatformContent(activeTab as PlatformId)}
@@ -339,14 +326,14 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                                     >
                                         ↩ Use shared
                                     </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <textarea
                         className={styles.composerTextarea}
-                        placeholder={activeTab === 'shared' ? "What's on your mind?" : `Customize for ${PLATFORMS.find(p => p.id === activeTab)?.name}...`}
+                        placeholder={post.status === 'published' ? '' : (activeTab === 'shared' ? "What's on your mind?" : `Customize for ${PLATFORMS.find(p => p.id === activeTab)?.name}...`)}
                         value={getCurrentContent()}
                         onChange={(e) => handleContentChange(e.target.value)}
                         readOnly={post.status === 'published'}
@@ -455,18 +442,38 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                         const charStatus = getCharStatus(content, platformId);
                         const isCustom = hasCustomContent(platformId);
 
+                        // Get connected account info
+                        const account = connectedAccounts.find(a => a.platform === platformId);
+                        const username = account?.platform_username || 'Your Name';
+                        const handle = username.includes(' ')
+                            ? `@${username.toLowerCase().replace(/\s+/g, '')}`
+                            : (username.startsWith('@') ? username : `@${username}`);
+
+                        // Platform specific styling
+                        const getAvatarClass = (pid: string) => {
+                            switch (pid) {
+                                case 'twitter': return styles.previewAvatarTwitter;
+                                case 'facebook': return styles.previewAvatarFacebook;
+                                case 'linkedin': return styles.previewAvatarLinkedin;
+                                case 'instagram': return styles.previewAvatarInstagram;
+                                default: return '';
+                            }
+                        };
+
                         return (
                             <div
                                 key={platformId}
-                                className={`${styles.previewCard} ${charStatus === 'error' ? styles.previewError : ''}`}
+                                className={`${styles.previewCard} ${activeTab === platformId ? styles.previewCardActive : ''} ${charStatus === 'error' ? styles.previewError : ''}`}
                                 onClick={() => initializePlatformContent(platformId)}
                             >
                                 <div className={styles.previewPlatformHeader}>
                                     <div className={styles.previewUser}>
-                                        <div className={styles.previewAvatar}></div>
+                                        <div className={`${styles.previewAvatar} ${getAvatarClass(platformId)}`}>
+                                            {username.charAt(0).toUpperCase()}
+                                        </div>
                                         <div>
-                                            <div className={styles.previewName}>Your Name</div>
-                                            <div className={styles.previewHandle}>@username</div>
+                                            <div className={styles.previewName}>{username}</div>
+                                            <div className={styles.previewHandle}>{handle}</div>
                                         </div>
                                     </div>
                                     <div className={styles.platformBadgeGroup}>

@@ -1,12 +1,10 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import styles from './Sidebar.module.css';
 
-import { LayoutDashboard, PenSquare, Calendar, FileText, Settings, Repeat, Library } from 'lucide-react';
+import { LayoutDashboard, PenSquare, Calendar, FileText, Settings, Repeat, Library, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 
 interface NavItem {
@@ -14,6 +12,11 @@ interface NavItem {
     href: string;
     icon: React.ElementType;
     badge?: number;
+}
+
+interface SidebarProps {
+    isCollapsed: boolean;
+    toggleSidebar: () => void;
 }
 
 const staticNavItems: NavItem[] = [
@@ -24,7 +27,7 @@ const staticNavItems: NavItem[] = [
     { label: 'Posts', href: '/posts', icon: FileText },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
     const pathname = usePathname();
     const { user, signOut } = useAuth();
 
@@ -41,7 +44,7 @@ export default function Sidebar() {
     const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User';
 
     return (
-        <aside className={styles.sidebar}>
+        <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
             <div className={styles.logo}>
                 <Image
                     src="/logo.png"
@@ -66,6 +69,7 @@ export default function Sidebar() {
                             key={item.href}
                             href={item.href}
                             className={`${styles.navItem} ${isActive ? styles.active : ''}`}
+                            title={isCollapsed ? item.label : undefined}
                         >
                             <Icon className={styles.navIcon} size={20} />
                             <span className={styles.navLabel}>{item.label}</span>
@@ -77,8 +81,19 @@ export default function Sidebar() {
                 })}
             </nav>
 
+            <button
+                className={styles.toggleBtn}
+                onClick={toggleSidebar}
+                title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+                <div className={styles.toggleIconWrapper}>
+                    {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                </div>
+                {!isCollapsed && <span className={styles.toggleLabel}>Collapse Sidebar</span>}
+            </button>
+
             <div className={styles.footer}>
-                <div className={styles.userSection}>
+                <div className={styles.userSection} title={displayName}>
                     <div className={styles.avatar}>{userInitial}</div>
                     <div className={styles.userInfo}>
                         <span className={styles.userName}>{displayName}</span>

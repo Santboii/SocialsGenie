@@ -74,6 +74,7 @@ interface DbPostPlatform {
     post_id: string;
     platform: string;
     custom_content: string | null;
+    metadata?: any; // Add jsonb support
     created_at: string;
 }
 
@@ -94,6 +95,7 @@ function dbToPost(row: DbPost, platforms: DbPostPlatform[]): Post {
         facebook: '',
         threads: '',
         bluesky: '',
+        pinterest: '',
     };
     platforms.forEach(p => {
         if (p.custom_content) {
@@ -112,6 +114,8 @@ function dbToPost(row: DbPost, platforms: DbPostPlatform[]): Post {
         updatedAt: row.updated_at,
         media: row.media || [],
         platformContent: Object.keys(platformContent).length > 0 ? platformContent : undefined,
+        // We could also map platformMetadata here if we added it to the Post interface, but for now we might just use it internally or add it if needed.
+        // The Post interface in types/db.ts might need updating if we want to expose this to the UI.
         libraryId: row.library_id || undefined,
         isEvergreen: row.is_evergreen || false,
     };
@@ -197,6 +201,7 @@ export interface CreatePostInput {
     status?: 'draft' | 'scheduled';
     scheduledAt?: string;
     platformContent?: Record<PlatformId, string>;
+    platformMetadata?: Record<PlatformId, any>; // Add metadata support
     media?: MediaAttachment[];
     libraryId?: string;
     isEvergreen?: boolean;
@@ -211,7 +216,7 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
     const userId = await getCurrentUserId();
     const supabase = getSupabase();
 
-    const { content, platforms, status = 'draft', scheduledAt, platformContent, media, libraryId, isEvergreen } = input;
+    const { content, platforms, status = 'draft', scheduledAt, platformContent, platformMetadata, media, libraryId, isEvergreen } = input;
 
     // Insert the post
     const { data: post, error: postError } = await supabase
@@ -238,6 +243,7 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
             post_id: (post as DbPost).id,
             platform,
             custom_content: platformContent?.[platform] || null,
+            metadata: platformMetadata?.[platform] || {},
         }));
 
         const { error: platformError } = await supabase
@@ -245,7 +251,10 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
             .insert(platformInserts);
 
         if (platformError) {
-            console.error('Failed to insert platforms:', platformError);
+            console.error('Failed to insert platforms:', JSON.stringify(platformError, null, 2));
+            // Don't throw here to avoid failing entire post if just platform link fails?
+            // Actually, this IS critical.
+            throw new DatabaseError(`Failed to save platform data: ${platformError.message}`);
         }
     }
 
@@ -261,6 +270,7 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
         post_id: (post as DbPost).id,
         platform: p,
         custom_content: platformContent?.[p] || null,
+        metadata: platformMetadata?.[p] || null,
         created_at: new Date().toISOString(),
     }));
 
@@ -538,6 +548,76 @@ export async function publishPost(id: string): Promise<Post> {
                 error: msg
             });
             SocialLogger.error({ ...context, platform: 'bluesky' }, 'Failed to publish to Bluesky', error);
+        }
+    }
+
+    // Publish to Pinterest
+    if (post.platforms.includes('pinterest')) {
+        try {
+            // Get Pinterest platform data (board_id)
+            const { data: platformData } = await getSupabase()
+                .from('post_platforms')
+                .select('metadata')
+                .eq('post_id', id)
+                .eq('platform', 'pinterest')
+                .single();
+
+            const boardId = platformData?.metadata?.boardId;
+
+            if (!boardId) {
+                throw new Error('No Board selected for Pinterest');
+            }
+
+            // Get access token (this is a bit inefficient, we should probably fetch connections once)
+            const { data: connection } = await getSupabase()
+                .from('connected_accounts')
+                .select('access_token')
+                .eq('user_id', await getCurrentUserId())
+                .eq('platform', 'pinterest')
+                .single();
+
+            if (!connection?.access_token) {
+                throw new Error('Pinterest not connected');
+            }
+
+            // Prepare Content
+            const contentToPublish = post.platformContent?.pinterest || post.content;
+
+            // Image is required. Use first image media.
+            const firstImage = post.media?.find(m => m.type === 'image')?.url;
+            if (!firstImage) {
+                throw new Error('Pinterest requires an image');
+            }
+
+            // Use internal API to avoid CORS issues with Pinterest API
+            const response = await fetch('/api/pinterest/publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    accessToken: connection.access_token,
+                    boardId,
+                    title: undefined,
+                    description: contentToPublish,
+                    imageUrl: firstImage
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to publish to Pinterest');
+            }
+
+            results.push({ platform: 'pinterest', success: true });
+            SocialLogger.info({ ...context, platform: 'pinterest' }, 'Published to Pinterest');
+
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            results.push({
+                platform: 'pinterest',
+                success: false,
+                error: msg
+            });
+            SocialLogger.error({ ...context, platform: 'pinterest' }, 'Failed to publish to Pinterest', error);
         }
     }
 

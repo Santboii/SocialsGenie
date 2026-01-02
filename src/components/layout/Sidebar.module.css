@@ -129,7 +129,6 @@
 }
 
 .footer {
-    margin-top: auto;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -304,11 +303,106 @@
     transform: translateY(-1px);
 }
 
-/* Responsive */
+/* Toggle Button */
+.toggleBtn {
+    margin-top: auto;
+    margin-bottom: var(--space-2);
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.toggleBtn:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+.toggleIconWrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.toggleBtn:hover .toggleIconWrapper {
+    border-color: var(--accent-purple);
+    color: var(--accent-purple);
+    background: var(--bg-surface);
+    transform: scale(1.05);
+}
+
+.toggleLabel {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Collapsed State (applied via class) */
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
+    padding: var(--space-3);
+}
+
+.sidebar.collapsed .toggleBtn {
+    width: 100%;
+    padding: var(--space-3) 0;
+    justify-content: center;
+}
+
+.sidebar.collapsed .toggleIconWrapper {
+    margin: 0;
+}
+
+.sidebar.collapsed .logoText,
+.sidebar.collapsed .navLabel,
+.sidebar.collapsed .userInfo,
+.sidebar.collapsed .legalLinks {
+    display: none;
+}
+
+.sidebar.collapsed .logo {
+    justify-content: center;
+    padding: var(--space-2);
+}
+
+.sidebar.collapsed .navItem {
+    justify-content: center;
+    padding: var(--space-3);
+}
+
+.sidebar.collapsed .navIcon {
+    margin: 0;
+}
+
+.sidebar.collapsed .userSection {
+    justify-content: center;
+    padding: var(--space-2);
+}
+
+/* Responsive fallback (mirrors collapsed state) */
 @media (max-width: 768px) {
     .sidebar {
         width: var(--sidebar-collapsed-width);
         padding: var(--space-3);
+    }
+
+    .toggleBtn {
+        display: none;
+        /* Hide toggle on mobile */
     }
 
     .logoText,

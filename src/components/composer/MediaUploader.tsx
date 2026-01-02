@@ -210,7 +210,8 @@ export default function MediaUploader({
                                 }}
                                 title="Generate an image with AI"
                             >
-                                ✨
+                                <span>✨</span>
+                                <span>Generate with AI</span>
                             </button>
                         )}
 

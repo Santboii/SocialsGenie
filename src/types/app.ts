@@ -1,5 +1,5 @@
 // Platform types
-export type PlatformId = 'twitter' | 'instagram' | 'linkedin' | 'facebook' | 'threads' | 'bluesky';
+export type PlatformId = 'twitter' | 'instagram' | 'linkedin' | 'facebook' | 'threads' | 'bluesky' | 'pinterest';
 
 export interface Platform {
     id: PlatformId;
@@ -125,6 +125,17 @@ export const PLATFORMS: Platform[] = [
         color: '#0085ff',
         maxLength: 300,
         maxMedia: 4,
+        supportsImages: true,
+        supportsVideo: false, // Video not supported in MVP
+        connected: false,
+    },
+    {
+        id: 'pinterest',
+        name: 'Pinterest',
+        icon: '📌',
+        color: '#E60023',
+        maxLength: 500, // Title limit 100, Desc 500. We'll use Desc for main content.
+        maxMedia: 1, // Focus on single image pins for MVP
         supportsImages: true,
         supportsVideo: false, // Video not supported in MVP
         connected: false,

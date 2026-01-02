@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGeminiService } from '@/lib/ai/google';
+import { LibraryAiSettings } from '@/components/libraries/LibrarySettingsModal';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
+const aiService = new GoogleGeminiService(process.env.GOOGLE_API_KEY || '');
 
 export async function POST(request: Request) {
     const supabase = await createClient();
@@ -32,10 +33,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Library not found' }, { status: 404 });
         }
 
-        // Generate posts using Gemini
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-
-        const settings = library.ai_settings || {};
+        const settings = (library.ai_settings || {}) as LibraryAiSettings;
         const tone = settings.tone === 'Custom' ? settings.custom_tone : (settings.tone || 'Professional');
         const audience = settings.audience ? `Target Audience: ${settings.audience}` : '';
         const language = settings.language || 'English';
@@ -47,7 +45,6 @@ export async function POST(request: Request) {
         // Determine intelligent defaults based on platforms
         const targetPlatforms = library.platforms || [];
         const isTwitterOnly = targetPlatforms.length === 1 && targetPlatforms[0] === 'twitter';
-        const isLinkedInOnly = targetPlatforms.length === 1 && targetPlatforms[0] === 'linkedin';
         const hasLongFormSupport = targetPlatforms.some((p: string) => ['linkedin', 'facebook'].includes(p));
 
         const defaultLength = isTwitterOnly ? 'concise (under 280 chars)'
@@ -56,6 +53,13 @@ export async function POST(request: Request) {
 
         const lengthInstruction = lengthMap[settings.length as keyof typeof lengthMap] || defaultLength;
         const emojiInstruction = settings.use_emojis === false ? 'Do NOT use emojis.' : 'Include relevant emojis.';
+
+        // Fix: Check both the top-level column (source of truth from create-library) AND the settings JSON
+        const shouldGenerateImages = library.generate_images || settings.generate_images;
+
+        const imageInstruction = shouldGenerateImages
+            ? 'Also generate a detailed prompt for an AI image generator ("imagePrompt") for each post. The user wants imagery with TEXT ON TOP (typography, poster style).'
+            : 'Do not generate image prompts.';
 
         let hashtagInstruction = 'Do NOT include hashtags.';
         if (settings.hashtag_strategy === 'auto') {
@@ -101,6 +105,10 @@ CONTEXT:
 REQUIREMENTS:
 - ${emojiInstruction}
 - ${hashtagInstruction}
+- ${imageInstruction}
+- IF generating image prompts: 
+    - The text on the image must be legible and spelled correctly. Explicitly state the text to be rendered in quotation marks within the image prompt.
+    - **CHARACTER FIDELITY**: If the post topic mentions a specific character, celebrity, or known intellectual property (e.g., "Mario", "Batman", "Mickey Mouse"), the image prompt MUST explicitly specify "exact official design", "canonical appearance", and "accurate depiction". Do NOT describe a generic lookalike. Use the entity's distinct visual traits (e.g., "Mario's specific red cap with M logo, blue overalls, mustache").
 - Create a "Master Idea" content that is platform-neutral (${lengthInstruction}).
 - Create specific variants for: ${validVariants.join(', ')}.
 
@@ -117,6 +125,7 @@ EXAMPLE JSON STRUCTURE:
 [
   {
     "content": "Master content here...",
+    "imagePrompt": "A detailed description...",
     "platform_content": {
         "twitter": "Short tweet...",
         "linkedin": "Longer post...",
@@ -125,11 +134,31 @@ EXAMPLE JSON STRUCTURE:
   }
 ]`;
 
+        // Direct call to text model via the service service's internal or public access? 
+        // Refactoring to use the service requires the service to expose genAI or we use it here since we imported GoogleGeminiService.
+        // But GoogleGeminiService.generatePost doesn't support batch/count well.
+        // We'll reimplement the direct call here but assume we can allow the 'imagePrompt' field.
+
+        // Re-init genAI here to keep existing logic structure or use service instance if exposed?
+        // Let's stick to existing direct usage but update the prompt as above.
+        // Wait, I replaced the import. I need to make sure I can use it.
+        // GoogleGeminiService encapsulates the client. I should check if it exposes the client or if I should instantiate one locally.
+        // The previous code had: const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
+        // I'll put that back to be safe, while also keeping the service for generateImage.
+
+        // Actually, let's keep the local initialization for the text generation part as it's custom batch logic.
+        // And use aiService.generateImage for the images.
+
+        // We need to restore the GoogleGenerativeAI import or assume it's available.
+        // The previous code had it.
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
         const result = await model.generateContent(prompt);
         const responseText = result.response.text();
 
-        // Robustly extract JSON array
-        console.log('Raw AI Response:', responseText); // Log for debugging
+        console.log('Raw AI Response:', responseText);
 
         let jsonString = responseText;
         // 1. Try to find content within ```json ... ``` blocks
@@ -145,7 +174,7 @@ EXAMPLE JSON STRUCTURE:
             }
         }
 
-        let generatedItems: { content: string, platform_content?: Record<string, string> }[] = [];
+        let generatedItems: { content: string, imagePrompt?: string, platform_content?: Record<string, string> }[] = [];
         try {
             generatedItems = JSON.parse(jsonString);
         } catch (e) {
@@ -154,14 +183,38 @@ EXAMPLE JSON STRUCTURE:
             throw new Error(`Failed to parse AI response. Raw: ${responseText.substring(0, 100)}...`);
         }
 
+        // Generate images if requested
+        const postsWithMedia = await Promise.all(generatedItems.map(async (item) => {
+            let media = [];
+            // Use the consistent flag we derived earlier
+            if (shouldGenerateImages && item.imagePrompt) {
+                try {
+                    console.log('Generating image for prompt:', item.imagePrompt);
+                    const imageUrl = await aiService.generateImage(item.imagePrompt);
+                    media.push({
+                        id: crypto.randomUUID(),
+                        type: 'image',
+                        url: imageUrl
+                    });
+                } catch (imgError) {
+                    console.error('Failed to generate image for post:', imgError);
+                }
+            }
+            return {
+                ...item,
+                media
+            };
+        }));
+
         // Insert posts into database
-        const postsToInsert = generatedItems.map(item => ({
+        const postsToInsert = postsWithMedia.map(item => ({
             user_id: user.id,
             content: item.content,
             platform_content: item.platform_content || {},
             status: 'draft',
             library_id: libraryId,
             is_evergreen: true,
+            media: item.media // Assuming DB supports this column (JSONB)
         }));
 
         const { data: insertedPosts, error: insertError } = await supabase
@@ -174,18 +227,16 @@ EXAMPLE JSON STRUCTURE:
             throw insertError;
         }
 
-        // Insert platform assignments based on library settings
-        // Insert platform assignments based on library settings
+        // Insert platform assignments
         if (insertedPosts && insertedPosts.length > 0) {
             const targetPlatforms = (library.platforms && library.platforms.length > 0)
                 ? library.platforms
-                : ['twitter']; // Fallback to twitter if no platforms set
+                : ['twitter'];
 
             const platformAssignments = insertedPosts.flatMap((post, index) => {
                 const originalItem = generatedItems[index];
                 const variants = originalItem.platform_content || {};
 
-                // Normalize variant keys to lowercase for safe lookup
                 const normalizedVariants = Object.keys(variants).reduce((acc, key) => {
                     acc[key.toLowerCase()] = variants[key];
                     return acc;
@@ -194,7 +245,6 @@ EXAMPLE JSON STRUCTURE:
                 return targetPlatforms.map((platform: string) => ({
                     post_id: post.id,
                     platform: platform,
-                    // Use normalized lookup to handle "Twitter" vs "twitter" AI idiosyncrasies
                     custom_content: normalizedVariants[platform.toLowerCase()] || null
                 }));
             });

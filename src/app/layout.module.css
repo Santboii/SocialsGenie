@@ -18,6 +18,10 @@
     }
 }
 
+.mainContentCollapsed {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
 .loading {
     display: flex;
     flex-direction: column;

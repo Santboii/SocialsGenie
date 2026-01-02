@@ -274,7 +274,7 @@ export default function SettingsPage() {
                 {/* Meta Platforms (Facebook + Instagram) */}
                 <div className={styles.platformGroup}>
                     <div className={styles.groupHeader}>
-                        <span>📱 Meta (Facebook & Instagram)</span>
+                        <span>Meta (Facebook & Instagram)</span>
                         <button
                             className="btn btn-primary"
                             onClick={handleConnectMeta}
@@ -327,7 +327,7 @@ export default function SettingsPage() {
                 {/* X (Twitter) Platform */}
                 <div className={styles.platformGroup}>
                     <div className={styles.groupHeader}>
-                        <span>𝕏 X (Twitter)</span>
+                        <span>X (Twitter)</span>
                         <button
                             className="btn btn-primary"
                             onClick={handleConnectX}
@@ -379,7 +379,7 @@ export default function SettingsPage() {
                 {/* LinkedIn Platform */}
                 <div className={styles.platformGroup}>
                     <div className={styles.groupHeader}>
-                        <span>In LinkedIn</span>
+                        <span>LinkedIn</span>
                         <div style={{ display: 'flex', gap: '8px' }}>
                             {getConnection(linkedinPlatform) && (
                                 <button
@@ -443,7 +443,7 @@ export default function SettingsPage() {
                 {/* Bluesky Platform */}
                 <div className={styles.platformGroup}>
                     <div className={styles.groupHeader}>
-                        <span>🦋 Bluesky</span>
+                        <span>Bluesky</span>
                         <button
                             className="btn btn-primary"
                             onClick={() => window.location.href = '/api/auth/bluesky'}
@@ -481,6 +481,58 @@ export default function SettingsPage() {
                                         <button
                                             className={styles.disconnectBtn}
                                             onClick={() => handleDisconnect('bluesky')}
+                                            type="button"
+                                        >
+                                            Disconnect
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </div>
+
+                {/* Pinterest Platform */}
+                <div className={styles.platformGroup}>
+                    <div className={styles.groupHeader}>
+                        <span>Pinterest</span>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => window.location.href = '/api/auth/pinterest'}
+                            type="button"
+                        >
+                            {getConnection('pinterest')
+                                ? '🔄 Reconnect'
+                                : '🔗 Connect Pinterest'}
+                        </button>
+                    </div>
+
+                    <div className={styles.platformGrid}>
+                        {(() => {
+                            const platform = PLATFORMS.find(p => p.id === 'pinterest');
+                            const connection = getConnection('pinterest');
+                            if (!platform) return null;
+
+                            return (
+                                <div className={styles.platformRow}>
+                                    <div className={styles.platformInfo}>
+                                        <div className={styles.platformIcon} style={{ color: platform.color }}>
+                                            {getPlatformIcon('pinterest', 22)}
+                                        </div>
+                                        <div>
+                                            <div className={styles.platformName}>{platform.name}</div>
+                                            <div className={styles.platformStatus}>
+                                                {connection
+                                                    ? `✓ Connected as @${connection.platform_username}`
+                                                    : 'Not connected'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {connection && (
+                                        <button
+                                            className={styles.disconnectBtn}
+                                            onClick={() => handleDisconnect('pinterest')}
                                             type="button"
                                         >
                                             Disconnect

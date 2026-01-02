@@ -19,6 +19,7 @@ export interface LibraryAiSettings {
     hashtag_strategy?: 'none' | 'auto' | 'custom';
     custom_hashtags?: string;
     use_emojis?: boolean;
+    generate_images?: boolean;
 }
 
 interface LibrarySettingsModalProps {
@@ -189,7 +190,7 @@ export default function LibrarySettingsModal({
                                 onClick={() => handlePlatformToggle(platform.id)}
                             >
                                 <span className={styles.platformIcon} style={{ color: platforms.includes(platform.id) ? platform.color : 'inherit' }}>
-                                    {platform.icon}
+                                    {getPlatformIcon(platform.id, 16)}
                                 </span>
                                 {platform.name}
                             </button>
@@ -305,14 +306,30 @@ export default function LibrarySettingsModal({
 
                 {/* Emojis Checkbox */}
                 <div className={styles.formGroup}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                        <input
-                            type="checkbox"
-                            checked={settings.use_emojis !== false} // Default true
-                            onChange={e => handleChange('use_emojis', e.target.checked)}
-                        />
-                        <span className={styles.label} style={{ margin: 0 }}>Use Emojis</span>
-                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={settings.use_emojis !== false} // Default true
+                                onChange={e => handleChange('use_emojis', e.target.checked)}
+                            />
+                            <span className={styles.label} style={{ margin: 0 }}>Use Emojis</span>
+                        </label>
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={settings.generate_images === true}
+                                onChange={e => handleChange('generate_images', e.target.checked)}
+                            />
+                            <div>
+                                <span className={styles.label} style={{ margin: 0 }}>Generate Images</span>
+                                <p className={styles.subLabel} style={{ margin: '2px 0 0 0', fontWeight: 400 }}>
+                                    Automatically create AI images for each post
+                                </p>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
             </div>

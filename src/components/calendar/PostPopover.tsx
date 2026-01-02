@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Post, PLATFORMS, PlatformId } from '@/types';
 import { deletePost, publishPost } from '@/lib/db';
 import styles from './PostPopover.module.css';
+import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 
 interface PopoverPosition {
     x: number;
@@ -121,7 +122,7 @@ export default function PostPopover({ post, position, onClose, onEdit, onPostUpd
                         if (!platform) return null;
                         return (
                             <span key={platformId} className={styles.platformBadge} style={{ color: platform.color }}>
-                                {platform.icon} {platform.name}
+                                {getPlatformIcon(platform.id, 14)} {platform.name}
                             </span>
                         );
                     })}

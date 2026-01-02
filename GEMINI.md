@@ -7,6 +7,8 @@ SocialsGenie is an AI-powered social media management app built with Next.js 16,
 - Always verify file paths and content within the provided context before making assertions.
 - If information is missing, state the limitation clearly instead of assuming or hallucinating details.
 - Ensure all generated code and logic are strictly grounded in the provided codebase context.
+- Make use of context7 when in doubt
+- Create workflows when you deem it worth it. Make sure to ask the user for permission before creating a workflow however.
 
 ## Current Year
 **2026** - Use this for all dates and references.

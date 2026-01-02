@@ -19,6 +19,26 @@ type CalendarViewType = 'month' | 'week' | 'day';
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+function PostCardImage({ src, alt, extraCount }: { src: string; alt: string; extraCount: number }) {
+    const [loaded, setLoaded] = useState(false);
+
+    return (
+        <div className={styles.postMediaWrapper}>
+            {!loaded && <div className={styles.shimmer} />}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src={src}
+                alt={alt}
+                className={`${styles.postMedia} ${!loaded ? styles.postMediaLoading : ''}`}
+                onLoad={() => setLoaded(true)}
+            />
+            {extraCount > 0 && (
+                <span className={styles.mediaCount}>+{extraCount}</span>
+            )}
+        </div>
+    );
+}
+
 function PostsPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -336,14 +356,26 @@ function PostsPageContent() {
                 <div className={styles.postsList}>
                     {loading ? (
                         // Skeleton Loading
-                        Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className={styles.postCard} style={{ opacity: 0.7 }}>
-                                <div className={styles.postHeader} style={{ marginBottom: '1rem' }}>
-                                    <div style={{ width: 80, height: 20, background: 'var(--bg-tertiary)', borderRadius: 4 }} />
-                                    <div style={{ width: 120, height: 20, background: 'var(--bg-tertiary)', borderRadius: 4 }} />
+                        Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className={styles.postCard} style={{ pointerEvents: 'none' }}>
+                                <div className={styles.postMediaWrapper} style={{ background: 'var(--bg-tertiary)' }}>
+                                    <div className={styles.shimmer} />
                                 </div>
-                                <div style={{ width: '100%', height: 16, background: 'var(--bg-tertiary)', borderRadius: 4, marginBottom: 8 }} />
-                                <div style={{ width: '80%', height: 16, background: 'var(--bg-tertiary)', borderRadius: 4 }} />
+                                <div className={styles.postBody}>
+                                    <div className={styles.postHeader} style={{ marginBottom: '1rem' }}>
+                                        <div style={{ width: 80, height: 24, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }} />
+                                        <div style={{ width: 100, height: 20, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }} />
+                                    </div>
+                                    <div style={{ width: '100%', height: 16, background: 'var(--bg-tertiary)', borderRadius: 4, marginBottom: 8 }} />
+                                    <div style={{ width: '80%', height: 16, background: 'var(--bg-tertiary)', borderRadius: 4, marginBottom: 16 }} />
+                                    <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <div style={{ width: 24, height: 24, background: 'var(--bg-tertiary)', borderRadius: 6 }} />
+                                            <div style={{ width: 24, height: 24, background: 'var(--bg-tertiary)', borderRadius: 6 }} />
+                                        </div>
+                                        <div style={{ width: 60, height: 24, background: 'var(--bg-tertiary)', borderRadius: 6 }} />
+                                    </div>
+                                </div>
                             </div>
                         ))
                     ) : filteredPosts.length === 0 ? (
@@ -356,7 +388,6 @@ function PostsPageContent() {
                     ) : (
                         // Actual Posts List
                         filteredPosts.map(post => {
-                            // ... existing list card JSX ...
                             // ... existing list card JSX ...
                             const statusConfig = {
                                 draft: { icon: '📝', label: 'Draft', className: styles.statusDraft },
@@ -378,17 +409,7 @@ function PostsPageContent() {
                             return (
                                 <div key={post.id} className={styles.postCard}>
                                     {hasMedia && firstImage && (
-                                        <div className={styles.postMediaWrapper}>
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img
-                                                src={firstImage.url || firstImage.thumbnail}
-                                                alt="Post attachment"
-                                                className={styles.postMedia}
-                                            />
-                                            {post.media!.length > 1 && (
-                                                <span className={styles.mediaCount}>+{post.media!.length - 1}</span>
-                                            )}
-                                        </div>
+                                        <PostCardImage src={firstImage.url || firstImage.thumbnail || ''} alt="Post attachment" extraCount={post.media!.length > 1 ? post.media!.length - 1 : 0} />
                                     )}
                                     <div className={styles.postBody}>
                                         <div className={styles.postHeader}>

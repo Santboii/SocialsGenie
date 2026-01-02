@@ -1,6 +1,7 @@
 'use client';
 
 import { Post, PLATFORMS, PlatformId } from '@/types';
+import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 import { updatePost, deletePost, publishPost } from '@/lib/db';
 import styles from './PostDetailPanel.module.css';
 
@@ -137,7 +138,7 @@ export default function PostDetailPanel({ post, onClose, onEdit, onPostUpdated }
                                         style={{ borderColor: platform.color }}
                                     >
                                         <span className={styles.platformIcon} style={{ color: platform.color }}>
-                                            {platform.icon}
+                                            {getPlatformIcon(platform.id, 16)}
                                         </span>
                                         <span>{platform.name}</span>
                                     </div>
@@ -163,7 +164,7 @@ export default function PostDetailPanel({ post, onClose, onEdit, onPostUpdated }
                             const isOver = count > platform.maxLength;
                             return (
                                 <div key={platformId} className={styles.charCount}>
-                                    <span style={{ color: platform.color }}>{platform.icon}</span>
+                                    <span style={{ color: platform.color }}>{getPlatformIcon(platform.id, 14)}</span>
                                     <span className={isOver ? styles.charOver : ''}>
                                         {count}/{platform.maxLength}
                                     </span>

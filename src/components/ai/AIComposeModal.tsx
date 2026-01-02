@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { PlatformId, ToneType, PLATFORMS } from '@/types';
 import { addSuggestion, getPosts } from '@/lib/storage';
 import styles from './AIComposeModal.module.css';
+import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 
 interface AIComposeModalProps {
     isOpen: boolean;
@@ -186,7 +187,7 @@ export default function AIComposeModal({ isOpen, onClose, onGenerated }: AICompo
                                         '--platform-color': platform.color,
                                     } as React.CSSProperties}
                                 >
-                                    <span className={styles.platformIcon}>{platform.icon}</span>
+                                    <span className={styles.platformIcon}>{getPlatformIcon(platform.id, 18)}</span>
                                     <span>{platform.name}</span>
                                 </button>
                             ))}

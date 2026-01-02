@@ -22,6 +22,14 @@ const PLATFORM_GUIDES: Record<string, { maxChars: number; style: string }> = {
         maxChars: 500,
         style: 'Casual, conversational, similar to Twitter but slightly longer. Trendy and real-time.',
     },
+    pinterest: {
+        maxChars: 500,
+        style: 'Inspiring, helpful, and keyword-rich. Focus on value, tips, or aesthetics. Use standard sentence case.',
+    },
+    bluesky: {
+        maxChars: 300,
+        style: 'Casual, authentic, and direct. Similar to Twitter/X but often more personal or niche-focused.',
+    },
 };
 
 export class GoogleGeminiService implements AIProvider {
@@ -59,6 +67,7 @@ The post should be engaging, native to ${platform}, and strictly follow the bran
 Also write a detailed prompt for an AI image generator to create a visual for this post.
 CRITICAL: The user wants images with TEXT ON TOP of them (typography, poster style).
 Include instructions for "bold typography", "text overlay", or "poster design" containing key phrases from the post.
+If the post mentions a specific character or known entity, explicitly request "canonical design", "official appearance", and "accurate depiction" to ensure fidelity.
 
 Return a JSON object with this structure: { "content": "The post text", "imagePrompt": "A detailed description for an AI image generator, explicitly asking for text overlay and specific wording." }
 Do not wrap in markdown code blocks. Just valid JSON.

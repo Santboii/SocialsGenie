@@ -5,6 +5,7 @@ import { Post, PLATFORMS, PlatformId, getCharacterLimit } from '@/types';
 import { updatePost } from '@/lib/db';
 import styles from './EditPostModal.module.css';
 import Modal from '../ui/Modal';
+import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 
 interface EditPostModalProps {
     post: Post | null;
@@ -129,7 +130,7 @@ export default function EditPostModal({ post, onClose, onSaved }: EditPostModalP
                                     } as React.CSSProperties}
                                     onClick={() => togglePlatform(platform.id)}
                                 >
-                                    <span className={styles.platformIcon}>{platform.icon}</span>
+                                    <span className={styles.platformIcon}>{getPlatformIcon(platform.id, 18)}</span>
                                     <span className={styles.platformName}>{platform.name}</span>
                                     {isSelected && limit && (
                                         <span className={`${styles.charIndicator} ${styles[charStatus]}`}>

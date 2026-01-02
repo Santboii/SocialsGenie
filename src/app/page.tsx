@@ -1,14 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useDashboardStats, useActivities } from '@/hooks/useQueries';
+import { useDashboardStats, useActivities, useConnections, useBrandProfile } from '@/hooks/useQueries';
 import styles from './page.module.css';
 
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: activities = [], isLoading: activitiesLoading } = useActivities();
+  const { data: connections = [], isLoading: connectionsLoading } = useConnections();
+  const { data: brand } = useBrandProfile();
 
-  const isLoading = statsLoading || activitiesLoading;
+  const isLoading = statsLoading || activitiesLoading || connectionsLoading;
 
   if (isLoading) {
     return (
@@ -144,6 +146,57 @@ export default function Dashboard() {
                 );
               })
             )}
+          </div>
+        </section>
+
+        <section>
+          <h2 className={styles.sectionTitle}>
+            <span>Suggested Actions</span>
+          </h2>
+          <div className={styles.actionGrid}>
+            {/* Dynamic Suggestion: Connect Platform */}
+            {connections.length === 0 && (
+              <Link href="/settings" className={`${styles.actionCard} ${styles.actionCardPink}`}>
+                <div className={styles.actionIcon}>🔌</div>
+                <div className={styles.actionContent}>
+                  <span className={styles.actionTitle}>Connect Accounts</span>
+                  <p className={styles.actionDesc}>Link your social profiles to start posting.</p>
+                </div>
+                <div className={styles.actionArrow}>→</div>
+              </Link>
+            )}
+
+            {/* Always Visible: Create Library */}
+            <Link href="/libraries" className={`${styles.actionCard} ${styles.actionCardRed}`}>
+              <div className={styles.actionIcon}>📚</div>
+              <div className={styles.actionContent}>
+                <span className={styles.actionTitle}>Create Content Library</span>
+                <p className={styles.actionDesc}>Organize your evergreen posts and assets.</p>
+              </div>
+              <div className={styles.actionArrow}>→</div>
+            </Link>
+
+            {/* Always Visible: Schedule Post */}
+            <Link href="/schedule" className={`${styles.actionCard} ${styles.actionCardBlue}`}>
+              <div className={styles.actionIcon}>📅</div>
+              <div className={styles.actionContent}>
+                <span className={styles.actionTitle}>View Schedule</span>
+                <p className={styles.actionDesc}>Manage your upcoming content calendar.</p>
+              </div>
+              <div className={styles.actionArrow}>→</div>
+            </Link>
+
+            {/* Always Visible: Brand Structure */}
+            <Link href="/settings/brand" className={`${styles.actionCard} ${styles.actionCardGreen}`}>
+              <div className={styles.actionIcon}>🧬</div>
+              <div className={styles.actionContent}>
+                <span className={styles.actionTitle}>{brand ? 'Manage Brand DNA' : 'Define Brand DNA'}</span>
+                <p className={styles.actionDesc}>
+                  {brand ? 'Update your AI personality and tone.' : 'Train your AI to sound exactly like you.'}
+                </p>
+              </div>
+              <div className={styles.actionArrow}>→</div>
+            </Link>
           </div>
         </section>
       </div>

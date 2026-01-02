@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, ReactNode } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -12,6 +12,7 @@ function AppContent({ children }: { children: ReactNode }) {
     const { user, loading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
     // Public routes that don't require authentication
     const publicRoutes = ['/login', '/landing', '/privacy', '/terms', '/data-deletion-status', '/pricing'];
@@ -43,11 +44,18 @@ function AppContent({ children }: { children: ReactNode }) {
     }
 
     // Show protected content with sidebar
+
+    // Auto-collapse on small screens if needed, or just let CSS handle it
+    // For now, we'll let user control via button
+
     if (user) {
         return (
             <div className={styles.appContainer}>
-                <Sidebar />
-                <main className={styles.mainContent}>
+                <Sidebar
+                    isCollapsed={isSidebarCollapsed}
+                    toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                />
+                <main className={`${styles.mainContent} ${isSidebarCollapsed ? styles.mainContentCollapsed : ''}`}>
                     {children}
                 </main>
             </div>

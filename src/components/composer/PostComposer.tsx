@@ -6,11 +6,18 @@ import { PlatformId, PLATFORMS, getCharacterLimit, Platform, MediaAttachment, ge
 import { createPost, publishPost } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
-import { useInvalidatePosts, useLibraries } from '@/hooks/useQueries';
+import { useInvalidatePosts, useLibraries, useConnections } from '@/hooks/useQueries';
 import { Library, Calendar as CalendarIcon, Repeat } from 'lucide-react';
 import MediaUploader from './MediaUploader';
 import AITextGenerator from './AITextGenerator';
 import styles from './Composer.module.css';
+
+interface PinterestBoard {
+    id: string;
+    name: string;
+    description: string;
+    privacy: 'PUBLIC' | 'PROTECTED' | 'SECRET';
+}
 
 type ContentMode = 'shared' | PlatformId;
 
@@ -43,7 +50,23 @@ export default function PostComposer() {
         facebook: '',
         threads: '',
         bluesky: '',
+        pinterest: '',
     });
+
+    // Per-platform metadata (e.g. Pinterest Board ID)
+    const [platformMetadata, setPlatformMetadata] = useState<Record<PlatformId, any>>({
+        twitter: {},
+        instagram: {},
+        linkedin: {},
+        facebook: {},
+        threads: {},
+        bluesky: {},
+        pinterest: {},
+    });
+
+    // Pinterest specific state
+    const [pinterestBoards, setPinterestBoards] = useState<PinterestBoard[]>([]);
+    const [isLoadingBoards, setIsLoadingBoards] = useState(false);
 
     // Per-platform image overrides (undefined means inherit from shared)
     const [platformImages, setPlatformImages] = useState<Partial<Record<PlatformId, File[]>>>({});
@@ -122,52 +145,66 @@ export default function PostComposer() {
         }
     }, [searchParams]);
 
-    // Fetch connected platforms on mount
+    // Cached Connections Query
+    const { data: connectedAccountsData, isLoading: isLoadingConnections } = useConnections();
+
     useEffect(() => {
-        async function loadConnectedPlatforms() {
-            const supabase = getSupabase();
-            const { data } = await supabase
-                .from('connected_accounts')
-                .select('platform, platform_username');
+        if (connectedAccountsData) {
+            const connectedIds: PlatformId[] = [];
+            const accountMap: Record<PlatformId, { username: string; handle: string }> = {} as any;
 
-            if (data) {
-                const connectedIds: PlatformId[] = [];
-                const accountMap: Record<PlatformId, { username: string; handle: string }> = {} as any;
+            connectedAccountsData.forEach((account) => {
+                const pid = account.platform;
+                connectedIds.push(pid);
 
-                data.forEach((account: any) => {
-                    const pid = account.platform as PlatformId;
-                    connectedIds.push(pid);
+                const name = account.platform_username || 'User';
+                const handle = name.includes(' ')
+                    ? `@${name.toLowerCase().replace(/\s+/g, '')}`
+                    : (name.startsWith('@') ? name : `@${name}`);
 
-                    const name = account.platform_username || 'User';
-                    const handle = name.includes(' ')
-                        ? `@${name.toLowerCase().replace(/\s+/g, '')}`
-                        : (name.startsWith('@') ? name : `@${name}`);
+                accountMap[pid] = {
+                    username: name,
+                    handle: handle
+                };
+            });
 
-                    accountMap[pid] = {
-                        username: name,
-                        handle: handle
-                    };
-                });
+            setConnectedPlatformIds(connectedIds);
+            setConnectedAccountsMap(accountMap);
 
-                setConnectedPlatformIds(connectedIds);
-                setConnectedAccountsMap(accountMap);
-
-                // Auto-select all connected platforms by default
-                const initialSelection = [...connectedIds];
-                setSelectedPlatforms(initialSelection);
-
-                // If only one platform, set it as active tab instead of 'shared'
-                if (initialSelection.length === 1) {
-                    setActiveTab(initialSelection[0]);
+            // Auto-select all connected platforms by default ONLY on initial load
+            // We use a ref or check if selection is empty to prevent overwriting user selection
+            if (selectedPlatforms.length === 0 && connectedIds.length > 0) {
+                setSelectedPlatforms([...connectedIds]);
+                if (connectedIds.length === 1) {
+                    setActiveTab(connectedIds[0]);
                 }
-            } else {
-                setConnectedPlatformIds([]);
             }
-
-            setIsLoading(false);
         }
-        loadConnectedPlatforms();
-    }, [searchParams]);
+        setIsLoading(isLoadingConnections);
+    }, [connectedAccountsData, isLoadingConnections]);
+
+    // Fetch Pinterest Boards if Pinterest is connected
+    useEffect(() => {
+        if (connectedPlatformIds.includes('pinterest') && pinterestBoards.length === 0) {
+            setIsLoadingBoards(true);
+            fetch('/api/pinterest/boards')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.boards) {
+                        setPinterestBoards(data.boards);
+                        // Default to first board if not set
+                        if (data.boards.length > 0 && !platformMetadata.pinterest?.boardId) {
+                            setPlatformMetadata(prev => ({
+                                ...prev,
+                                pinterest: { ...prev.pinterest, boardId: data.boards[0].id }
+                            }));
+                        }
+                    }
+                })
+                .catch(err => console.error('Failed to load Pinterest boards:', err))
+                .finally(() => setIsLoadingBoards(false));
+        }
+    }, [connectedPlatformIds, pinterestBoards.length, platformMetadata.pinterest?.boardId]);
 
     // Get platforms that are connected (with full platform info)
     const connectedPlatforms = useMemo(() => {
@@ -418,26 +455,54 @@ export default function PostComposer() {
     };
 
     const hasValidContent = (): boolean => {
-        if (!sharedContent.trim()) return false;
         if (selectedPlatforms.length === 0) return false;
-        // We still check if platforms have content if we want to be strict, but the user requirement
-        // specifically asked for "shared is empty; and that it is required". 
-        // So strict requirement is sharedContent. 
-        return true;
+
+        const isSharedValid = sharedContent.trim().length > 0;
+
+        // If shared content is valid, we're good unless a specific selected platform has overridden it with empty content
+        // (Wait, current UX implies shared is fallback. If shared is empty, ALL selected platforms must have custom content)
+
+        if (isSharedValid) return true;
+
+        // If shared is empty, check if ALL selected platforms have custom content
+        const allCustomized = selectedPlatforms.every(id => {
+            const content = platformContent[id] || '';
+            return content.trim().length > 0;
+        });
+
+        return allCustomized;
+    };
+
+    const hasPlatformSpecificError = (): string | null => {
+        if (selectedPlatforms.includes('pinterest')) {
+            const rules = PLATFORMS.find(p => p.id === 'pinterest');
+            // Check custom images first (if defined), otherwise fallback to shared
+            const customImages = platformImages['pinterest'];
+            const effectiveImages = customImages !== undefined ? customImages : selectedImages;
+
+            if (effectiveImages.length === 0) return 'Pinterest requires an image';
+        }
+        return null;
     };
 
     const canSchedule = scheduleEnabled && scheduleDate && scheduleTime;
 
     const getDisabledReason = (): string | undefined => {
         if (isSubmitting) return 'Publishing in progress...';
-        if (!sharedContent.trim()) return 'Shared content is required';
+        if (isSubmitting) return 'Publishing in progress...';
         if (selectedPlatforms.length === 0) return 'Select at least one platform';
+
+        if (!hasValidContent()) return 'Content is required';
 
         // Media validation
         const mediaError = validateMediaCount(selectedImages.length);
         if (mediaError) return mediaError;
 
         if (hasAnyError()) return 'Fix character limit errors first';
+
+        // Platform specific validation
+        const platformError = hasPlatformSpecificError();
+        if (platformError) return platformError;
 
         if (postMode === 'schedule') {
             if (scheduleEnabled && !canSchedule) return 'Select date and time';
@@ -521,6 +586,7 @@ export default function PostComposer() {
                 status: initialStatus,
                 scheduledAt,
                 platformContent,
+                platformMetadata,
                 media: uploadedMedia,
                 libraryId: postMode === 'library' ? selectedLibraryId : undefined,
             });
@@ -550,7 +616,10 @@ export default function PostComposer() {
                 {/* Platform Selection - Unified toggle with active/inactive states */}
                 {isLoading ? (
                     <div className={styles.platformToggle}>
-                        <span className={styles.loadingText}>Loading connected platforms...</span>
+                        {/* Render 5 skeleton buttons to reserve space */}
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className={styles.skeletonBtn} />
+                        ))}
                     </div>
                 ) : connectedPlatforms.length === 0 ? (
                     <div className={styles.noPlatforms}>
@@ -588,7 +657,16 @@ export default function PostComposer() {
                 <div className={styles.editorCard}>
                     {/* Tab Info Header */}
                     <div className={styles.tabInfo}>
-                        {activeTab === 'shared' ? (
+                        {selectedPlatforms.length === 1 ? (
+                            <div className={styles.singlePlatformHeader}>
+                                <span style={{ color: PLATFORMS.find(p => p.id === selectedPlatforms[0])?.color, fontSize: '1.2em' }}>
+                                    {getPlatformIcon(selectedPlatforms[0], 24)}
+                                </span>
+                                <p className={styles.tabDescription}>
+                                    Writing post for <strong>{PLATFORMS.find(p => p.id === selectedPlatforms[0])?.name}</strong>
+                                </p>
+                            </div>
+                        ) : activeTab === 'shared' ? (
                             <p className={styles.tabDescription}>
                                 ✨ This content will be used for all platforms unless you customize individually.
                             </p>
@@ -646,6 +724,41 @@ export default function PostComposer() {
                         )}
                     </div>
 
+                    {/* Pinterest Board Selector - Show if tab is pinterest OR if pinterest is the only selected platform */}
+                    {(activeTab === 'pinterest' || (selectedPlatforms.length === 1 && selectedPlatforms[0] === 'pinterest')) && (
+                        <div className={styles.boardSelector}>
+                            <span className={styles.boardIcon}>
+                                {getPlatformIcon('pinterest', 24)}
+                            </span>
+                            <div className={styles.boardSelectWrapper}>
+                                <label className={styles.boardLabel}>
+                                    Select Board (Required)
+                                </label>
+                                <select
+                                    className={styles.boardSelect}
+                                    value={platformMetadata.pinterest?.boardId || ''}
+                                    onChange={(e) => setPlatformMetadata(prev => ({
+                                        ...prev,
+                                        pinterest: { ...prev.pinterest, boardId: e.target.value }
+                                    }))}
+                                    disabled={isLoadingBoards}
+                                >
+                                    {isLoadingBoards ? (
+                                        <option>Loading boards...</option>
+                                    ) : pinterestBoards.length === 0 ? (
+                                        <option value="">No boards found</option>
+                                    ) : (
+                                        pinterestBoards.map(board => (
+                                            <option key={board.id} value={board.id}>
+                                                {board.name} {board.privacy === 'SECRET' ? '🔒' : ''}
+                                            </option>
+                                        ))
+                                    )}
+                                </select>
+                            </div>
+                        </div>
+                    )}
+
                     <div className={styles.textareaContainer}>
                         <textarea
                             className={styles.composerTextarea}
@@ -663,7 +776,8 @@ export default function PostComposer() {
                             }}
                             title="Magic Compose with AI"
                         >
-                            ✨
+                            <span>✨</span>
+                            <span>Generate with AI</span>
                         </button>
 
                         {/* AI Popover */}
@@ -723,7 +837,7 @@ export default function PostComposer() {
                                 title="Promote these images to be the Shared default for all platforms"
                                 style={{ fontSize: '0.85rem', padding: '4px 8px' }}
                             >
-                                <span>↗️</span>
+                                <span></span>
                                 Make Shared Images
                             </button>
                         </div>
@@ -909,6 +1023,7 @@ export default function PostComposer() {
                                 case 'facebook': return styles.previewAvatarFacebook;
                                 case 'linkedin': return styles.previewAvatarLinkedin;
                                 case 'instagram': return styles.previewAvatarInstagram;
+                                case 'pinterest': return styles.previewAvatarPinterest;
                                 default: return '';
                             }
                         };

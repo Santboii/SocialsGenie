@@ -4,14 +4,17 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Sparkles, Pause, Play, Edit3, FileText, Loader2, Check, X, Settings, MessageCircle, Hash, Users, Smile, Trash2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import styles from './LibraryDetail.module.css';
 import { ContentLibrary, Post, PLATFORMS, PlatformId } from '@/types';
+import { deletePost } from '@/lib/db';
 import LibrarySettingsModal, { LibraryAiSettings } from '@/components/libraries/LibrarySettingsModal';
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 
 export default function LibraryDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const libraryId = params.id as string;
 
     const [library, setLibrary] = useState<ContentLibrary & { ai_settings?: LibraryAiSettings } | null>(null);
@@ -143,6 +146,8 @@ export default function LibraryDetailPage() {
             });
 
             if (res.ok) {
+                await queryClient.invalidateQueries({ queryKey: ['libraries'] });
+                router.refresh();
                 router.push('/libraries');
             } else {
                 const data = await res.json();
@@ -151,6 +156,18 @@ export default function LibraryDetailPage() {
         } catch (error) {
             console.error('Failed to delete library:', error);
             alert('An error occurred while deleting the library');
+        }
+    };
+
+    const handleDeletePost = async (postId: string) => {
+        if (!confirm('Are you sure you want to delete this post?')) return;
+
+        try {
+            await deletePost(postId);
+            setPosts(posts.filter(p => p.id !== postId));
+        } catch (error) {
+            console.error('Failed to delete post:', error);
+            alert('Failed to delete post');
         }
     };
 
@@ -165,9 +182,59 @@ export default function LibraryDetailPage() {
     if (isLoading) {
         return (
             <div className={styles.container}>
-                <div className={styles.loadingState}>
-                    <Loader2 size={32} className={styles.spinner} />
-                    <p>Loading library...</p>
+                {/* Header Skeleton */}
+                <div className={styles.header}>
+                    <div className="skeleton" style={{ width: 120, height: 24 }} />
+                </div>
+
+                {/* Library Card Skeleton */}
+                <div className={styles.libraryCard}>
+                    <div className={styles.libraryHeader}>
+                        <div className="skeleton" style={{ width: 56, height: 56, borderRadius: 14 }} />
+                        <div className={styles.libraryInfo} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div className="skeleton" style={{ width: '40%', height: 32 }} />
+                            <div className="skeleton" style={{ width: '70%', height: 20 }} />
+                            <div className="skeleton" style={{ width: '30%', height: 20 }} />
+                        </div>
+                    </div>
+
+                    {/* Stats Skeleton */}
+                    <div className={styles.statsRow}>
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className={styles.stat} style={{ width: '100%' }}>
+                                <div className="skeleton" style={{ width: 40, height: 32, marginBottom: 8 }} />
+                                <div className="skeleton" style={{ width: 60, height: 12 }} />
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Quick Actions Skeleton */}
+                    <div className={styles.quickActions}>
+                        <div className="skeleton" style={{ width: 160, height: 48, borderRadius: 10 }} />
+                    </div>
+                </div>
+
+                {/* Posts Section Skeleton */}
+                <div className={styles.postsSection}>
+                    <div className="skeleton" style={{ width: 180, height: 28, marginBottom: 16 }} />
+                    <div className={styles.postsList}>
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} className={styles.postCard} style={{ height: 320 }}>
+                                <div className={styles.cardMediaPreview}>
+                                    <div className="skeleton" style={{ width: '100%', height: '100%' }} />
+                                </div>
+                                <div className={styles.cardContent}>
+                                    <div className="skeleton" style={{ width: '100%', height: 16, marginBottom: 8 }} />
+                                    <div className="skeleton" style={{ width: '80%', height: 16, marginBottom: 8 }} />
+                                    <div className="skeleton" style={{ width: '60%', height: 16 }} />
+                                    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between' }}>
+                                        <div className="skeleton" style={{ width: 80, height: 20 }} />
+                                        <div className="skeleton" style={{ width: 60, height: 20, borderRadius: 99 }} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         );
@@ -379,41 +446,83 @@ export default function LibraryDetailPage() {
                     </div>
                 ) : (
                     <div className={styles.postsList}>
-                        {posts.map(post => (
-                            <Link href={`/posts/${post.id}`} key={post.id} className={styles.postCard}>
-                                {post.media && post.media.length > 0 && (
-                                    <div className={styles.cardMediaPreview}>
-                                        <img src={post.media[0].url} alt="Post media" loading="lazy" />
-                                        {post.media.length > 1 && (
-                                            <span className={styles.mediaCount}>+{post.media.length - 1}</span>
-                                        )}
-                                    </div>
-                                )}
-                                <div className={styles.cardContent}>
-                                    <div className={styles.postMain}>
-                                        <p className={styles.postContent}>{post.content}</p>
-                                    </div>
-                                    <div className={styles.postMeta}>
-                                        <div className={styles.platformBadges}>
-                                            {post.post_platforms?.map(pp => (
-                                                <span key={pp.platform} className={styles.platformBadge}>
-                                                    {getPlatformIcon(pp.platform)}
-                                                </span>
-                                            ))}
-                                            {(!post.post_platforms || post.post_platforms.length === 0) && (
-                                                <span className={styles.noPlatform}>No platforms</span>
-                                            )}
+                        {posts.map(post => {
+                            const postPlatforms = post.post_platforms?.map(pp => {
+                                const p = PLATFORMS.find(pl => pl.id === pp.platform);
+                                return p ? { ...p, id: pp.platform } : null;
+                            }).filter(Boolean);
+
+                            return (
+                                <div
+                                    key={post.id}
+                                    className={styles.postCardWrapper}
+                                    onClick={() => router.push(`/posts/${post.id}`)}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <div className={styles.postCard}>
+                                        <div className={styles.floatingStatus}>
+                                            <span className={`${styles.statusBadge} ${styles[post.status]}`}>
+                                                {post.status}
+                                            </span>
                                         </div>
-                                        <span className={`${styles.statusBadge} ${styles[post.status]}`}>
-                                            {post.status}
-                                        </span>
+
+                                        {post.media && post.media.length > 0 && (
+                                            <div className={styles.cardMediaPreview}>
+                                                <img src={post.media[0].url} alt="Post media" loading="lazy" />
+                                                {post.media.length > 1 && (
+                                                    <span className={styles.mediaCount}>+{post.media.length - 1}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                        <div className={`${styles.cardContent} ${(!post.media || post.media.length === 0) ? styles.noMedia : ''}`}>
+                                            <div className={styles.postMain}>
+                                                <p className={styles.postContent}>{post.content}</p>
+                                            </div>
+                                            <div className={styles.postMeta}>
+                                                <div className={styles.platformBadges}>
+                                                    {postPlatforms?.map(p => (
+                                                        <span
+                                                            key={p!.id}
+                                                            className={styles.platformBadge}
+                                                            style={{ color: p!.color }}
+                                                            title={p!.name}
+                                                        >
+                                                            {getPlatformIcon(p!.id)}
+                                                        </span>
+                                                    ))}
+                                                    {(!postPlatforms || postPlatforms.length === 0) && (
+                                                        <span className={styles.noPlatform}>No platforms</span>
+                                                    )}
+                                                </div>
+
+                                                <div className={styles.inlineActions}>
+                                                    <button
+                                                        className={styles.cardActionBtn}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            router.push(`/posts/${post.id}`);
+                                                        }}
+                                                        title="Edit Post"
+                                                    >
+                                                        <Edit3 size={14} />
+                                                    </button>
+                                                    <button
+                                                        className={`${styles.cardActionBtn} ${styles.deleteBtn}`}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeletePost(post.id);
+                                                        }}
+                                                        title="Delete Post"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className={styles.postAction}>
-                                    <Edit3 size={16} />
-                                </div>
-                            </Link>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
