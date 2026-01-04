@@ -96,6 +96,7 @@ function dbToPost(row: DbPost, platforms: DbPostPlatform[]): Post {
         threads: '',
         bluesky: '',
         pinterest: '',
+        tiktok: '',
     };
     platforms.forEach(p => {
         if (p.custom_content) {
@@ -618,6 +619,40 @@ export async function publishPost(id: string): Promise<Post> {
                 error: msg
             });
             SocialLogger.error({ ...context, platform: 'pinterest' }, 'Failed to publish to Pinterest', error);
+        }
+    }
+
+    // Publish to TikTok
+    if (post.platforms.includes('tiktok')) {
+        try {
+            const contentToPublish = post.platformContent?.tiktok || post.content;
+
+            const response = await fetch('/api/publish/tiktok', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    postId: id,
+                    content: contentToPublish,
+                    media: post.media,
+                }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to publish to TikTok');
+            }
+
+            results.push({ platform: 'tiktok', success: true });
+            SocialLogger.info({ ...context, platform: 'tiktok' }, 'Published to TikTok');
+
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            results.push({
+                platform: 'tiktok',
+                success: false,
+                error: msg
+            });
+            SocialLogger.error({ ...context, platform: 'tiktok' }, 'Failed to publish to TikTok', error);
         }
     }
 

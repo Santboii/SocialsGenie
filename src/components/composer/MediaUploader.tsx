@@ -56,7 +56,7 @@ export default function MediaUploader({
         if (!fileList) return;
 
         const imageFiles = Array.from(fileList).filter(file =>
-            file.type.startsWith('image/')
+            file.type.startsWith('image/') || file.type.startsWith('video/')
         );
 
         if (imageFiles.length === 0) return;
@@ -184,7 +184,7 @@ export default function MediaUploader({
                 <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,video/*"
                     multiple
                     onChange={(e) => handleFileSelect(e.target.files)}
                     style={{ display: 'none' }}
@@ -195,8 +195,8 @@ export default function MediaUploader({
                     <>
                         <div className={styles.dropzoneContent}>
                             <span className={styles.dropzoneIcon}>📷</span>
-                            <span className={styles.dropzoneText}>Click or drag images here</span>
-                            <span className={styles.dropzoneHint}>Up to {maxMedia} images</span>
+                            <span className={styles.dropzoneText}>Click or drag media here</span>
+                            <span className={styles.dropzoneHint}>Up to {maxMedia} items</span>
                         </div>
 
                         {/* Floating AI button */}
@@ -318,15 +318,27 @@ export default function MediaUploader({
                         {/* Existing Media Previews */}
                         {existingMedia.map((media) => (
                             <div key={media.id} className={styles.imagePreviewItem}>
-                                <img
-                                    src={media.url}
-                                    alt={media.altText || 'Existing image'}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPreviewImage(media.url);
-                                    }}
-                                    style={{ cursor: 'pointer' }}
-                                />
+                                {media.type === 'video' ? (
+                                    <video
+                                        src={media.url}
+                                        className={styles.mediaPreview}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPreviewImage(media.url);
+                                        }}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                ) : (
+                                    <img
+                                        src={media.url}
+                                        alt={media.altText || 'Existing media'}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPreviewImage(media.url);
+                                        }}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                )}
                                 <button
                                     type="button"
                                     className={styles.removeImageBtn}
@@ -343,15 +355,27 @@ export default function MediaUploader({
                         {/* New File Previews */}
                         {imagePreviews.map((preview, index) => (
                             <div key={`new-${index}`} className={styles.imagePreviewItem}>
-                                <img
-                                    src={preview}
-                                    alt={`Preview ${index + 1}`}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPreviewImage(preview);
-                                    }}
-                                    style={{ cursor: 'pointer' }}
-                                />
+                                {files[index]?.type.startsWith('video/') ? (
+                                    <video
+                                        src={preview}
+                                        className={styles.mediaPreview}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPreviewImage(preview);
+                                        }}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                ) : (
+                                    <img
+                                        src={preview}
+                                        alt={`Preview ${index + 1}`}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPreviewImage(preview);
+                                        }}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                )}
                                 <button
                                     type="button"
                                     className={styles.removeImageBtn}
@@ -391,7 +415,11 @@ export default function MediaUploader({
                             >
                                 ✕
                             </button>
-                            <img src={previewImage} alt="Full size preview" />
+                            {previewImage.endsWith('.mp4') || previewImage.startsWith('blob:') && files.find(f => f.name === previewImage || URL.createObjectURL(f) === previewImage)?.type.startsWith('video/') ? (
+                                <video src={previewImage} controls autoPlay className={styles.fullSizeMedia} />
+                            ) : (
+                                <img src={previewImage} alt="Full size preview" />
+                            )}
                         </div>
                     </div>,
                     document.body

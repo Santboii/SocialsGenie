@@ -33,7 +33,10 @@ export function hasAnyCharError(
 /**
  * Platforms that require images
  */
-const PLATFORMS_REQUIRING_IMAGES: PlatformId[] = ['instagram', 'pinterest'];
+/**
+ * Platforms that require media (image or video)
+ */
+const PLATFORMS_REQUIRING_MEDIA: PlatformId[] = ['instagram', 'pinterest', 'tiktok'];
 
 /**
  * Check if a platform has a validation error (e.g., missing required image)
@@ -42,9 +45,9 @@ export function getPlatformValidationError(
     platformId: PlatformId,
     imageCount: number
 ): string | null {
-    if (PLATFORMS_REQUIRING_IMAGES.includes(platformId) && imageCount === 0) {
+    if (PLATFORMS_REQUIRING_MEDIA.includes(platformId) && imageCount === 0) {
         const platform = PLATFORMS.find(p => p.id === platformId);
-        return `${platform?.name || platformId} requires an image`;
+        return `${platform?.name || platformId} requires media (image/video)`;
     }
     return null;
 }

@@ -1,0 +1,79 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { postVideo, refreshAccessToken } from '@/lib/social/tiktok';
+
+export async function POST(request: Request) {
+    try {
+        const { postId, content, media } = await request.json();
+
+        // 1. Authenticate check
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // 2. Validate Media (Video required)
+        const videoMedia = media?.find((m: any) => m.type === 'video');
+        if (!videoMedia || !videoMedia.url) {
+            return NextResponse.json({ error: 'Video is required for TikTok' }, { status: 400 });
+        }
+
+        // 3. Get Access Token
+        const { data: connection, error: connError } = await supabase
+            .from('connected_accounts')
+            .select('access_token, refresh_token, token_expires_at')
+            .eq('user_id', user.id)
+            .eq('platform', 'tiktok')
+            .single();
+
+        if (connError || !connection) {
+            return NextResponse.json({ error: 'TikTok not connected' }, { status: 400 });
+        }
+
+        let accessToken = connection.access_token;
+
+        // 4. Check Token Expiry & Refresh if needed
+        const expiresAt = new Date(connection.token_expires_at);
+        if (expiresAt < new Date()) {
+            console.log('Refreshing TikTok token...');
+            try {
+                const tokens = await refreshAccessToken(connection.refresh_token);
+                accessToken = tokens.accessToken;
+
+                // Update DB
+                await supabase
+                    .from('connected_accounts')
+                    .update({
+                        access_token: tokens.accessToken,
+                        refresh_token: tokens.refreshToken,
+                        token_expires_at: tokens.expiresAt.toISOString(),
+                    })
+                    .eq('user_id', user.id)
+                    .eq('platform', 'tiktok');
+            } catch (refreshError) {
+                console.error('Token refresh failed', refreshError);
+                return NextResponse.json({ error: 'TikTok session expired. Please reconnect.' }, { status: 401 });
+            }
+        }
+
+        // 5. Download Video File
+        const videoResponse = await fetch(videoMedia.url);
+        if (!videoResponse.ok) {
+            return NextResponse.json({ error: 'Failed to download video file' }, { status: 500 });
+        }
+        const videoArrayBuffer = await videoResponse.arrayBuffer();
+        const videoBuffer = Buffer.from(videoArrayBuffer);
+
+        // 6. Post to TikTok
+        // TikTok caption limits are strict, content is used as title/caption
+        await postVideo(accessToken, videoBuffer, content || '');
+
+        return NextResponse.json({ success: true });
+
+    } catch (error: any) {
+        console.error('TikTok publish error:', error);
+        return NextResponse.json({ error: error.message || 'Failed to publish to TikTok' }, { status: 500 });
+    }
+}

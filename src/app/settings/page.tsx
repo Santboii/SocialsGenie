@@ -153,6 +153,7 @@ export default function SettingsPage() {
         linkedin: () => window.location.href = '/api/auth/linkedin',
         bluesky: () => window.location.href = '/api/auth/bluesky',
         pinterest: () => window.location.href = '/api/auth/pinterest',
+        tiktok: () => window.location.href = '/api/auth/tiktok',
     };
 
     const [pendingDisconnect, setPendingDisconnect] = useState<PlatformId | null>(null);
@@ -240,7 +241,7 @@ export default function SettingsPage() {
     };
 
     // Platform lists
-    const activePlatforms: PlatformId[] = ['facebook', 'instagram', 'twitter', 'linkedin', 'bluesky', 'pinterest'];
+    const activePlatforms: PlatformId[] = ['facebook', 'instagram', 'twitter', 'linkedin', 'bluesky', 'pinterest', 'tiktok'];
     const comingSoonPlatforms: PlatformId[] = ['threads'];
 
     const tabs = [

@@ -59,6 +59,7 @@ export default function PostComposer() {
         threads: {},
         bluesky: {},
         pinterest: {},
+        tiktok: {},
     });
 
     // Pinterest specific state
@@ -562,9 +563,10 @@ export default function PostComposer() {
                 .from('post-media')
                 .getPublicUrl(filePath);
 
+            const isVideo = file.type.startsWith('video/');
             uploadedMedia.push({
                 id: generateId(),
-                type: 'image',
+                type: isVideo ? 'video' : 'image',
                 url: publicUrl,
                 altText: file.name,
             });

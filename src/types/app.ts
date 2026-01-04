@@ -1,5 +1,5 @@
 // Platform types
-export type PlatformId = 'twitter' | 'instagram' | 'linkedin' | 'facebook' | 'threads' | 'bluesky' | 'pinterest';
+export type PlatformId = 'twitter' | 'instagram' | 'linkedin' | 'facebook' | 'threads' | 'bluesky' | 'pinterest' | 'tiktok';
 
 export interface Platform {
     id: PlatformId;
@@ -138,6 +138,17 @@ export const PLATFORMS: Platform[] = [
         maxMedia: 1, // Focus on single image pins for MVP
         supportsImages: true,
         supportsVideo: false, // Video not supported in MVP
+        connected: false,
+    },
+    {
+        id: 'tiktok',
+        name: 'TikTok',
+        icon: '🎵',
+        color: '#000000',
+        maxLength: 2200,
+        maxMedia: 1, // Video only normally
+        supportsImages: false, // TikTok is primarily video; verified via API research
+        supportsVideo: true,
         connected: false,
     },
 ];
