@@ -60,8 +60,7 @@ export function generateCodeChallenge(verifier: string): string {
  */
 export function getTikTokAuthUrl(
     redirectUri: string,
-    state: string,
-    codeChallenge: string
+    state: string
 ): string {
     const clientKey = process.env.TIKTOK_CLIENT_KEY?.trim();
     if (!clientKey) {
