@@ -35,9 +35,9 @@ export default function AITextGenerator({ onGenerate, onClose, platform }: AITex
             setOriginalAiTopic(aiTopic);
             setAiTopic(data.optimizedPrompt);
             setIsAiTopicOptimized(true);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Topic optimization failed', error);
-            setError(error.message);
+            setError(error instanceof Error ? error.message : 'Optimization failed');
         } finally {
             setIsOptimizingAiTopic(false);
         }
@@ -74,9 +74,9 @@ export default function AITextGenerator({ onGenerate, onClose, platform }: AITex
             // We successfully generated content, let's close the panel
             onClose();
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Generation failed', error);
-            setError(error.message || 'Failed to generate post.');
+            setError(error instanceof Error ? error.message : 'Failed to generate post.')
         } finally {
             setIsGeneratingAI(false);
         }

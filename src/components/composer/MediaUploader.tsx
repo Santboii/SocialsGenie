@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MediaAttachment, generateId, PLATFORMS } from '@/types';
+import Image from 'next/image';
+import { MediaAttachment } from '@/types';
 import styles from './Composer.module.css'; // We'll share the styles for now to avoid breaking CSS
-import { getSupabase } from '@/lib/supabase';
 
 interface MediaUploaderProps {
     files: File[];
@@ -162,9 +162,9 @@ export default function MediaUploader({
             setShowAIImagePanel(false);
             setAiImagePrompt('');
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Image generation failed', error);
-            setError(error.message);
+            setError(error instanceof Error ? error.message : 'Failed to generate image');
         } finally {
             setIsGeneratingImage(false);
         }
@@ -329,15 +329,20 @@ export default function MediaUploader({
                                         style={{ cursor: 'pointer' }}
                                     />
                                 ) : (
-                                    <img
-                                        src={media.url}
-                                        alt={media.altText || 'Existing media'}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setPreviewImage(media.url);
-                                        }}
-                                        style={{ cursor: 'pointer' }}
-                                    />
+                                    <div className="relative w-full h-full">
+                                        <Image
+                                            src={media.url}
+                                            alt={media.altText || 'Existing media'}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPreviewImage(media.url);
+                                            }}
+                                            fill
+                                            className="object-cover"
+                                            style={{ cursor: 'pointer' }}
+                                            unoptimized
+                                        />
+                                    </div>
                                 )}
                                 <button
                                     type="button"
@@ -366,15 +371,20 @@ export default function MediaUploader({
                                         style={{ cursor: 'pointer' }}
                                     />
                                 ) : (
-                                    <img
-                                        src={preview}
-                                        alt={`Preview ${index + 1}`}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setPreviewImage(preview);
-                                        }}
-                                        style={{ cursor: 'pointer' }}
-                                    />
+                                    <div className="relative w-full h-full">
+                                        <Image
+                                            src={preview}
+                                            alt={`Preview ${index + 1}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPreviewImage(preview);
+                                            }}
+                                            fill
+                                            className="object-cover"
+                                            style={{ cursor: 'pointer' }}
+                                            unoptimized
+                                        />
+                                    </div>
                                 )}
                                 <button
                                     type="button"
@@ -418,7 +428,15 @@ export default function MediaUploader({
                             {previewImage.endsWith('.mp4') || previewImage.startsWith('blob:') && files.find(f => f.name === previewImage || URL.createObjectURL(f) === previewImage)?.type.startsWith('video/') ? (
                                 <video src={previewImage} controls autoPlay className={styles.fullSizeMedia} />
                             ) : (
-                                <img src={previewImage} alt="Full size preview" />
+                                <div className="relative w-full h-full">
+                                    <Image
+                                        src={previewImage}
+                                        alt="Full size preview"
+                                        fill
+                                        className="object-contain"
+                                        unoptimized
+                                    />
+                                </div>
                             )}
                         </div>
                     </div>,

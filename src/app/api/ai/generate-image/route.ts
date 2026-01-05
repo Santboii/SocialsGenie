@@ -31,10 +31,10 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ imageUrl });
 
-    } catch (error: any) {
-        console.error('Image Generation Error:', error);
+    } catch (error) {
+        console.error('Image generation error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to generate image' },
+            { error: error instanceof Error ? error.message : 'Failed to check generation status' },
             { status: 500 }
         );
     }

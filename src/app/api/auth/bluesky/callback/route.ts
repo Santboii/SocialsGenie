@@ -153,10 +153,11 @@ export async function GET(request: NextRequest) {
             `${baseUrl}/settings?success=${encodeURIComponent(`Connected to Bluesky as @${profile.handle}`)}`
         );
 
-    } catch (err: any) {
-        console.error('Bluesky callback error:', err);
-        return NextResponse.redirect(
-            `${baseUrl}/settings?error=${encodeURIComponent(`Failed to complete Bluesky authorization: ${err.message}`)}`
+    } catch (error: unknown) {
+        console.error('Bluesky callback error:', error);
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Failed to complete Bluesky authorization' },
+            { status: 500 }
         );
     }
 }

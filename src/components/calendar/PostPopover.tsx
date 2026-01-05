@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { Post, PLATFORMS, PlatformId } from '@/types';
 import { deletePost, publishPost } from '@/lib/db';
 import styles from './PostPopover.module.css';
@@ -23,7 +24,7 @@ export default function PostPopover({ post, position, onClose, onEdit, onPostUpd
     const popoverRef = useRef<HTMLDivElement>(null);
     const [adjustedPosition, setAdjustedPosition] = useState(position);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         // Adjust position to keep popover in viewport
         if (popoverRef.current) {
             const rect = popoverRef.current.getBoundingClientRect();
@@ -43,6 +44,7 @@ export default function PostPopover({ post, position, onClose, onEdit, onPostUpd
             }
             if (y < padding) y = padding;
 
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setAdjustedPosition({ x, y });
         }
     }, [position]);
@@ -132,10 +134,13 @@ export default function PostPopover({ post, position, onClose, onEdit, onPostUpd
                 <div className={styles.content}>
                     {post.media && post.media.length > 0 && (
                         <div className={styles.previewImageWrapper}>
-                            <img
-                                src={post.media[0].url || post.media[0].thumbnail}
+                            <Image
+                                src={post.media[0].url || post.media[0].thumbnail || ''}
                                 alt="Post media"
                                 className={styles.previewImage}
+                                width={280}
+                                height={180}
+                                unoptimized
                             />
                         </div>
                     )}

@@ -1,16 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { Post, PlatformId } from '@/types';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { PlatformId } from '@/types';
 import { postTweet, refreshAccessToken, uploadMedia } from '@/lib/social/x';
 import { postToFacebookPage, postToInstagram } from '@/lib/social/meta';
 
 // Define DB types locally to strictly type the admin query results
-interface DbPost {
-    id: string;
-    user_id: string;
-    content: string;
-    media: string[];
-    scheduled_at: string;
-}
 
 interface DbPostPlatform {
     platform: PlatformId;
@@ -18,6 +12,7 @@ interface DbPostPlatform {
 }
 
 interface DbConnection {
+    id: string;
     platform: PlatformId;
     access_token: string;
     refresh_token: string;
@@ -151,7 +146,7 @@ export async function publishScheduledPosts() {
 }
 
 // Helper: Publish to Twitter with token refresh
-async function publishToTwitter(supabase: any, connection: any, content: string, mediaUrls: string[] = []) {
+async function publishToTwitter(supabase: SupabaseClient, connection: DbConnection, content: string, mediaUrls: string[] = []) {
     let accessToken = connection.access_token;
 
     // Refresh if needed
@@ -192,7 +187,7 @@ async function publishToTwitter(supabase: any, connection: any, content: string,
 }
 
 // Helper: Publish to Facebook
-async function publishToFacebook(connection: any, content: string, media: string[]) {
+async function publishToFacebook(connection: DbConnection, content: string, media: string[]) {
     // connection.platform_user_id should be the Page ID for Facebook pages type connection
     // But `connected_accounts` might store the User ID, and we need to fetch Pages?
     // Usually the connection stores the Page Access Token if it's a Page connection.
@@ -208,7 +203,7 @@ async function publishToFacebook(connection: any, content: string, media: string
 }
 
 // Helper: Publish to Instagram
-async function publishToInstagram(connection: any, content: string, media: string[]) {
+async function publishToInstagram(connection: DbConnection, content: string, media: string[]) {
     // Similar assumption: platform_user_id is the Instagram Business Account ID
     await postToInstagram(connection.platform_user_id, connection.access_token, content, media && media.length > 0 ? media[0] : undefined);
 }

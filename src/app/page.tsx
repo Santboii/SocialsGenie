@@ -118,7 +118,7 @@ export default function Dashboard() {
             {activities.length === 0 ? (
               <div className={styles.emptyState}>No recent activity</div>
             ) : (
-              activities.slice(0, 5).map((activity: any, index: number) => {
+              activities.slice(0, 5).map((activity, index: number) => {
                 // Safer date parsing
                 const dateStr = activity.created_at || activity.timestamp;
                 const date = dateStr ? new Date(dateStr) : new Date();

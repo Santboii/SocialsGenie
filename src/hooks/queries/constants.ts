@@ -6,5 +6,6 @@ export const queryKeys = {
     dashboardStats: ['dashboardStats'] as const,
     activities: ['activities'] as const,
     libraries: ['libraries'] as const,
+    library: (id: string) => ['libraries', id] as const,
     weeklySlots: ['weeklySlots'] as const,
 };

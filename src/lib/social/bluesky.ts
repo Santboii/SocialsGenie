@@ -1,6 +1,6 @@
-import { AtpAgent, ComAtprotoServerDescribeServer } from '@atproto/api';
+import { AtpAgent } from '@atproto/api';
 import crypto from 'crypto';
-import * as jose from 'jose';
+import { type JWK, generateKeyPair, exportJWK, importJWK, SignJWT, type JWTPayload } from 'jose';
 import sharp from 'sharp';
 import { SocialLogger } from './logger';
 
@@ -39,23 +39,25 @@ const CLIENT_ID = process.env.BLUESKY_CLIENT_ID;
 // Types
 // ============================================
 
+type KeyLike = crypto.KeyObject | CryptoKey | Uint8Array;
+
 export interface BlueskyTokens {
     accessToken: string;
     refreshToken: string;
     expiresIn: number;
     scope: string;
     did: string;
-    dpopKey?: any; // JWK
+    dpopKey?: JWK; // JWK
 }
 
 export interface DpopKeyPair {
-    privateKey: any;
-    publicKey: any;
+    privateKey: KeyLike | Uint8Array;
+    publicKey: KeyLike | Uint8Array;
 }
 
 // Generate DPoP Key Pair (ES256)
 export async function generateDpopKeyPair(): Promise<DpopKeyPair> {
-    const { privateKey, publicKey } = await jose.generateKeyPair('ES256', { extractable: true });
+    const { privateKey, publicKey } = await generateKeyPair('ES256', { extractable: true });
     return { privateKey, publicKey };
 }
 
@@ -63,17 +65,17 @@ export async function generateDpopKeyPair(): Promise<DpopKeyPair> {
 export async function createDpopProof(
     url: string,
     method: string,
-    privateKey: any,
-    publicKey: any,
+    privateKey: KeyLike | Uint8Array,
+    publicKey: KeyLike | Uint8Array,
     nonce?: string,
     accessToken?: string
 ): Promise<string> {
-    const jwk = await jose.exportJWK(publicKey);
+    const jwk = await exportJWK(publicKey);
 
     // DPoP spec: htu must be the HTTP URI without query or fragment components
     const htu = url.split('?')[0].split('#')[0];
 
-    const payload: jose.JWTPayload = {
+    const payload: JWTPayload = {
         htm: method,
         htu: htu,
         nonce: nonce,
@@ -85,7 +87,7 @@ export async function createDpopProof(
         payload.ath = hash;
     }
 
-    return new jose.SignJWT(payload)
+    return new SignJWT(payload)
         .setProtectedHeader({ alg: 'ES256', typ: 'dpop+jwt', jwk: jwk })
         .setIssuedAt()
         .setJti(crypto.randomUUID())
@@ -93,12 +95,12 @@ export async function createDpopProof(
 }
 
 // Export/Import Helpers
-export async function exportToJSON(key: any): Promise<any> {
-    return jose.exportJWK(key);
+export async function exportToJSON(key: KeyLike | Uint8Array): Promise<JWK> {
+    return exportJWK(key);
 }
 
-export async function importFromJSON(jwk: any): Promise<any> {
-    return jose.importJWK(jwk, 'ES256');
+export async function importFromJSON(jwk: JWK): Promise<KeyLike | Uint8Array> {
+    return importJWK(jwk, 'ES256');
 }
 
 // ============================================
@@ -108,9 +110,9 @@ export async function importFromJSON(jwk: any): Promise<any> {
 export async function dpopFetch(
     url: string,
     method: string,
-    privateKey: any,
-    publicKey: any,
-    body: any,
+    privateKey: KeyLike | Uint8Array,
+    publicKey: KeyLike | Uint8Array,
+    body: BodyInit | null | undefined, // standard fetch body types
     extraHeaders: Record<string, string> = {}
 ): Promise<Response> {
     const requestId = crypto.randomUUID();
@@ -161,7 +163,7 @@ export async function dpopFetch(
                 const clone = response.clone();
                 const errJson = await clone.json();
                 SocialLogger.error(context, 'Error body (no nonce header)', errJson);
-            } catch (e) { /* ignore */ }
+            } catch { /* ignore */ }
         }
     }
 
@@ -223,7 +225,7 @@ export async function exchangeCodeForTokens(
     // Actually, simply sending client_id and grant_type in body is standard for public clients 
     // or confidential clients using "client_secret_post" auth method.
 
-    const bodyParams: any = {
+    const bodyParams: Record<string, string> = {
         grant_type: 'authorization_code',
         code: code,
         redirect_uri: redirectUri,
@@ -283,7 +285,7 @@ export async function exchangeCodeForTokens(
 export async function refreshAccessToken(refreshToken: string): Promise<BlueskyTokens> {
     if (!CLIENT_ID) throw new Error('Missing BLUESKY_CLIENT_ID');
 
-    const bodyParams: any = {
+    const bodyParams: Record<string, string> = {
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
         client_id: CLIENT_ID,
@@ -390,9 +392,10 @@ export async function resolvePdsEndpoint(did: string): Promise<string> {
             const res = await fetch(`https://plc.directory/${did}`);
             if (res.ok) {
                 const data = await res.json();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const service = data.service?.find((s: any) => s.id === '#atproto_pds' || s.type === 'AtprotoPersonalDataServer');
                 if (service?.serviceEndpoint) {
-                    pdsEndpoint = service.serviceEndpoint;
+                    pdsEndpoint = service.serviceEndpoint as string;
                 }
             }
         }
@@ -402,9 +405,10 @@ export async function resolvePdsEndpoint(did: string): Promise<string> {
             const res = await fetch(`https://${domain}/.well-known/did.json`);
             if (res.ok) {
                 const data = await res.json();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const service = data.service?.find((s: any) => s.id === '#atproto_pds' || s.type === 'AtprotoPersonalDataServer');
                 if (service?.serviceEndpoint) {
-                    pdsEndpoint = service.serviceEndpoint;
+                    pdsEndpoint = service.serviceEndpoint as string;
                 }
             }
         }
@@ -458,7 +462,7 @@ export async function postBlueskyRecord(
                 'POST',
                 dpopKey.privateKey,
                 dpopKey.publicKey,
-                buffer,
+                buffer as unknown as BodyInit,
                 {
                     'Authorization': `DPoP ${accessToken}`,
                     'Content-Type': mimeType,
@@ -471,7 +475,7 @@ export async function postBlueskyRecord(
                     'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': mimeType,
                 },
-                body: buffer as any
+                body: buffer as unknown as BodyInit
             });
         }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, Suspense } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Post, PostStatus, PlatformId, PLATFORMS } from '@/types';
@@ -10,7 +11,7 @@ import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import PostPopover from '@/components/calendar/PostPopover';
 import styles from './page.module.css';
-import { Calendar as CalendarIcon, List as ListIcon, ChevronLeft, ChevronRight, LayoutGrid, CalendarDays, Rows, ChevronDown, MoreVertical } from 'lucide-react';
+import { Calendar as CalendarIcon, List as ListIcon, ChevronLeft, ChevronRight, ChevronDown, MoreVertical } from 'lucide-react';
 
 type FilterStatus = 'all' | PostStatus;
 type ViewType = 'list' | 'calendar';
@@ -209,8 +210,14 @@ function PostsPageContent() {
                 onClick={(e) => handlePostClick(post, e)}
             >
                 {hasMedia && (
-                    <div className={styles.postItemMedia}>
-                        <img src={post.media?.[0]?.thumbnail || post.media?.[0]?.url} alt="" />
+                    <div className={styles.postItemMedia} style={{ position: 'relative', width: 48, height: 48 }}>
+                        <Image
+                            src={post.media?.[0]?.thumbnail || post.media?.[0]?.url || ''}
+                            alt=""
+                            fill
+                            style={{ objectFit: 'cover', borderRadius: '4px' }}
+                            unoptimized
+                        />
                     </div>
                 )}
                 <div className={styles.postItemBody}>
@@ -531,8 +538,14 @@ function PostsPageContent() {
                                                             onClick={(e) => handlePostClick(post, e)}
                                                         >
                                                             {hasMedia && (
-                                                                <div className={styles.weekPostMedia}>
-                                                                    <img src={post.media?.[0]?.thumbnail || post.media?.[0]?.url} alt="" />
+                                                                <div className={styles.weekPostMedia} style={{ position: 'relative', width: '100%', height: 80 }}>
+                                                                    <Image
+                                                                        src={post.media?.[0]?.thumbnail || post.media?.[0]?.url || ''}
+                                                                        alt=""
+                                                                        fill
+                                                                        style={{ objectFit: 'cover' }}
+                                                                        unoptimized
+                                                                    />
                                                                 </div>
                                                             )}
                                                             <div className={styles.weekPostContent}>

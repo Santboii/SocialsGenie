@@ -34,10 +34,10 @@ export async function POST(req: Request) {
             originalPrompt: prompt
         });
 
-    } catch (error: any) {
-        console.error('Optimize Prompt Error:', error);
+    } catch (error) {
+        console.error('Prompt optimization error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to optimize prompt' },
+            { error: error instanceof Error ? error.message : 'Failed to optimize prompt' },
             { status: 500 }
         );
     }

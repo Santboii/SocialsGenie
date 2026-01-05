@@ -26,8 +26,22 @@ export function errorResponse(message: string, status = 400, code?: string): Nex
     return NextResponse.json({ error: message, code }, { status });
 }
 
+export async function updateSession(): Promise<
+    | { user: { id: string; email?: string }; error?: never }
+    | { user?: never; error: NextResponse }
+> {
+    const supabase = await createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) {
+        return {
+            error: errorResponse('Unauthorized', 401, 'AUTH_REQUIRED'),
+        };
+    }
+    return { user: { id: user.id, email: user.email } };
+}
+
 // Get authenticated user or return error response
-export async function getAuthenticatedUser(request: NextRequest): Promise<
+export async function getAuthenticatedUser(): Promise<
     | { user: { id: string; email?: string }; error?: never }
     | { user?: never; error: NextResponse }
 > {
@@ -84,7 +98,7 @@ export async function withAuthAndValidation<T>(
     | { user: { id: string; email?: string }; data: T; error?: never }
     | { user?: never; data?: never; error: NextResponse }
 > {
-    const authResult = await getAuthenticatedUser(request);
+    const authResult = await getAuthenticatedUser();
     if (authResult.error) {
         return { error: authResult.error };
     }

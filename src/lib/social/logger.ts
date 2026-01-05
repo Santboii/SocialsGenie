@@ -8,7 +8,7 @@ export interface LogContext {
     postId?: string;
     userId?: string;
     requestId?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export class SocialLogger {
@@ -29,7 +29,7 @@ export class SocialLogger {
     /**
      * Recursively redacts sensitive information from objects
      */
-    private static redact(data: any): any {
+    private static redact(data: unknown): unknown {
         if (!data) return data;
         if (typeof data !== 'object') return data;
 
@@ -37,8 +37,10 @@ export class SocialLogger {
             return data.map(item => this.redact(item));
         }
 
-        const redacted: any = {};
-        for (const [key, value] of Object.entries(data)) {
+        const redacted: Record<string, unknown> = {};
+        const dataObj = data as Record<string, unknown>;
+
+        for (const [key, value] of Object.entries(dataObj)) {
             // Check if key is sensitive (case-insensitive partial match for safety)
             const lowerKey = key.toLowerCase();
             const isSensitive = Array.from(this.SENSITIVE_KEYS).some(k => lowerKey.includes(k.toLowerCase()));
@@ -54,7 +56,7 @@ export class SocialLogger {
         return redacted;
     }
 
-    private static log(level: 'info' | 'warn' | 'error', context: LogContext, message: string, data?: any) {
+    private static log(level: 'info' | 'warn' | 'error', context: LogContext, message: string, data?: unknown) {
         const entry = {
             timestamp: new Date().toISOString(),
             level,
@@ -74,15 +76,15 @@ export class SocialLogger {
         }
     }
 
-    static info(context: LogContext, message: string, data?: any) {
+    static info(context: LogContext, message: string, data?: unknown) {
         this.log('info', context, message, data);
     }
 
-    static warn(context: LogContext, message: string, data?: any) {
+    static warn(context: LogContext, message: string, data?: unknown) {
         this.log('warn', context, message, data);
     }
 
-    static error(context: LogContext, message: string, error?: any) {
+    static error(context: LogContext, message: string, error?: unknown) {
         // Handle Error objects specifically to extract stack traces
         const errorData = error instanceof Error ? {
             name: error.name,

@@ -59,7 +59,7 @@ interface DbPost {
     id: string;
     user_id: string;
     content: string;
-    media: any;
+    media: MediaAttachment[];
     status: 'draft' | 'scheduled' | 'published' | 'failed';
     scheduled_at: string | null;
     published_at: string | null;
@@ -74,7 +74,7 @@ interface DbPostPlatform {
     post_id: string;
     platform: string;
     custom_content: string | null;
-    metadata?: any; // Add jsonb support
+    metadata?: Record<string, unknown>; // Add jsonb support
     created_at: string;
 }
 
@@ -202,7 +202,7 @@ export interface CreatePostInput {
     status?: 'draft' | 'scheduled';
     scheduledAt?: string;
     platformContent?: Record<PlatformId, string>;
-    platformMetadata?: Record<PlatformId, any>; // Add metadata support
+    platformMetadata?: Record<PlatformId, Record<string, unknown>>; // Add metadata support
     media?: MediaAttachment[];
     libraryId?: string;
     isEvergreen?: boolean;
@@ -271,7 +271,7 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
         post_id: (post as DbPost).id,
         platform: p,
         custom_content: platformContent?.[p] || null,
-        metadata: platformMetadata?.[p] || null,
+        metadata: platformMetadata?.[p] || undefined,
         created_at: new Date().toISOString(),
     }));
 

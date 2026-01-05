@@ -4,6 +4,8 @@
 - Always verify file paths and content within the provided context before making assertions.
 - If information is missing, state the limitation clearly instead of assuming or hallucinating details.
 - Ensure all generated code and logic are strictly grounded in the provided codebase context.
+- **Strict Typing:** Always respect TypeScript strict usage. Avoid `any` types; use specific types or `unknown` with type guards.
+- **Linting Compliance:** Address linting issues immediately as they arise during code modification. Do not leave new lint errors unresolved.
 
 ## Code Style
 

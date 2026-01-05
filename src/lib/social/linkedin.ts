@@ -223,7 +223,7 @@ export async function postLinkedInShare(
     }
 
     // Build post body using the new Posts API schema
-    const postBody: any = {
+    const postBody: Record<string, unknown> = {
         author: authorUrn,
         commentary: content,
         visibility: 'PUBLIC',

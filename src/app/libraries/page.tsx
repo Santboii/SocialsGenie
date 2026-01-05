@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Library as LibraryIcon, FileText, Sparkles, ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
 import styles from './Libraries.module.css';
-import { ContentLibrary, LIBRARY_TEMPLATES, LibraryTemplate, LibraryTemplateType, PLATFORMS, PlatformId } from '@/types';
+import { ContentLibrary, LibraryTemplate, LibraryTemplateType, PLATFORMS, PlatformId } from '@/types';
 import Modal from '@/components/ui/Modal';
 import LibraryTemplates from '@/components/libraries/LibraryTemplates';
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
@@ -64,7 +64,6 @@ export default function LibrariesPage() {
 
     // Generated Posts State
     const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
-    const [newLibraryId, setNewLibraryId] = useState<string | null>(null);
     const [isOptimizing, setIsOptimizing] = useState(false);
 
     // Pinterest Board State
@@ -125,9 +124,10 @@ export default function LibrariesPage() {
         setHashtagStrategy('none');
         setEditingLibraryId(null);
         setGeneratedPosts([]);
-        setNewLibraryId(null);
+        setGeneratedPosts([]);
         setPinterestBoards([]);
         setPinterestBoardId('');
+        setIsSubmitting(false);
     };
 
     const handleTemplateSelect = (template: LibraryTemplate | null) => {
@@ -139,33 +139,6 @@ export default function LibrariesPage() {
             setSelectedTemplate('custom');
             setTopicPrompt('');
         }
-    };
-
-    const handleEdit = (lib: ContentLibrary & { post_count?: number }) => {
-        setName(lib.name);
-        setColor(lib.color);
-        setTopicPrompt(lib.topic_prompt || '');
-        setGenerateImages(lib.generate_images || false);
-
-        // Populate AI Settings
-        const settings = lib.ai_settings || {};
-        setTone(settings.tone || 'Professional');
-        setLength(settings.length || 'medium');
-        setLanguage(settings.language || 'English');
-        setLanguage(settings.language || 'English');
-        setAudience(settings.audience || '');
-        setHashtagStrategy(settings.hashtag_strategy || 'none');
-        setPlatforms(lib.platforms || []);
-        setPinterestBoardId(settings.pinterest_board_id || '');
-
-        // Fetch boards if Pinterest is in platforms
-        if (lib.platforms?.includes('pinterest')) {
-            fetchPinterestBoards();
-        }
-
-        setEditingLibraryId(lib.id);
-        setWizardStep('details');
-        setIsModalOpen(true);
     };
 
     const handleNextStep = () => {
@@ -220,7 +193,6 @@ export default function LibrariesPage() {
             }
             const library = await createRes.json();
             console.log('[Libraries] Library created:', library.id);
-            setNewLibraryId(library.id);
 
             // Step 2: Generate posts if we have a topic prompt
             if (topicPrompt.trim()) {

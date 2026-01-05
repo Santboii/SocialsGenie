@@ -1,9 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextResponse } from 'next/server';
-import { GoogleGeminiService } from '@/lib/ai/google';
-
-// Initialize AI service
-const aiService = new GoogleGeminiService(process.env.GOOGLE_ATTRIBUTION_API_KEY || '');
 
 export async function GET(request: Request) {
     // 1. Authenticate Request
@@ -81,7 +77,7 @@ export async function GET(request: Request) {
             // 3b. Publish Post (Update Status)
             // One-Time Queue: We just update the draft to 'published'
 
-            const { data: updatedPost, error: updateError } = await supabase
+            const { error: updateError } = await supabase
                 .from('posts')
                 .update({
                     status: 'published',
@@ -116,8 +112,11 @@ export async function GET(request: Request) {
 
         return NextResponse.json({ success: true, processed: results.length, details: results });
 
-    } catch (error: any) {
-        console.error('Cron job failed:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        console.error('Queue processing error:', error);
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Failed to process queue' },
+            { status: 500 }
+        );
     }
 }

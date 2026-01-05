@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { use } from 'react';
 import { PlatformId, PLATFORMS, getCharacterLimit, Post, MediaAttachment, generateId } from '@/types';
@@ -8,7 +9,7 @@ import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 import { getPost, updatePost, deletePost } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
 import { useConnections } from '@/hooks/useQueries';
-import { getCharStatus, hasAnyCharError, getFirstPlatformError, getPlatformValidationError } from '@/hooks/usePlatformValidation';
+import { getCharStatus, getPlatformValidationError } from '@/hooks/usePlatformValidation';
 import styles from '@/components/composer/Composer.module.css';
 import MediaUploader from '@/components/composer/MediaUploader';
 import PlatformSelector from '@/components/composer/PlatformSelector';
@@ -35,7 +36,7 @@ export default function EditPostPage({ params }: EditPostPageProps) {
     const [sharedContent, setSharedContent] = useState('');
     const [platformContent, setPlatformContent] = useState<Partial<Record<PlatformId, string>>>({});
     const [activeTab, setActiveTab] = useState<ContentMode>('shared');
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [allowedPlatforms, setAllowedPlatforms] = useState<PlatformId[] | null>(null);
 
     // Media State
@@ -147,11 +148,6 @@ export default function EditPostPage({ params }: EditPostPageProps) {
         if (activeTab === platformId) {
             handleTabSwitch('shared');
         }
-    };
-
-    // Use imported validation from shared hook
-    const hasAnyError = (): boolean => {
-        return hasAnyCharError(selectedPlatforms, getContentForPlatform);
     };
 
     // Calculate total media count for validation
@@ -449,7 +445,16 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                             (existingMedia.length > 0) && (
                                 <div className={styles.readOnlyMedia}>
                                     {existingMedia.map(media => (
-                                        <img key={media.id} src={media.url} alt="Media" className={styles.previewImage} />
+                                        <div key={media.id} className={styles.previewImageWrapper} style={{ position: 'relative', width: '100px', height: '100px' }}>
+                                            <Image
+                                                src={media.url}
+                                                alt="Media"
+                                                className={styles.previewImage}
+                                                fill
+                                                style={{ objectFit: 'cover' }}
+                                                unoptimized
+                                            />
+                                        </div>
                                     ))}
                                 </div>
                             )
@@ -542,7 +547,7 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                                 if (!aHasError && bHasError) return 1;
                                 return 0;
                             })
-                            .map((platformId, index, sortedPlatforms) => {
+                            .map((platformId) => {
                                 const content = getContentForPlatform(platformId);
                                 const isCustom = hasCustomContent(platformId);
 

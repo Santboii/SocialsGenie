@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase';
-import { Post, Platform, PlatformId } from '@/types';
+import Image from 'next/image';
+import { PlatformId } from '@/types';
 import { PLATFORMS } from '@/types';
 import { useRouter } from 'next/navigation';
 
@@ -81,9 +81,10 @@ export default function AIComposer() {
 
             const data = await response.json();
             setGeneratedResult(data);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Generation failed', error);
-            alert(error.message || 'Failed to generate post. Please check your API keys.');
+            const errorMessage = error instanceof Error ? error.message : 'Failed to generate post. Please check your API keys.';
+            alert(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -130,7 +131,7 @@ export default function AIComposer() {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <label className="block text-sm font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                                    1. What's your post about?
+                                    1. What&apos;s your post about?
                                 </label>
                                 {isOptimized && (
                                     <span className="badge badge-success text-[10px] py-0.5 px-2">
@@ -312,11 +313,13 @@ export default function AIComposer() {
                                     </p>
 
                                     {generatedResult.imageUrl && (
-                                        <div className="rounded-xl overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-tertiary)] relative">
-                                            <img
+                                        <div className="rounded-xl overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-tertiary)] relative h-64 w-full">
+                                            <Image
                                                 src={generatedResult.imageUrl}
                                                 alt="Generated visual"
-                                                className="w-full h-auto object-cover transition-transform duration-700 hover:scale-105"
+                                                fill
+                                                className="object-cover transition-transform duration-700 hover:scale-105"
+                                                unoptimized
                                             />
                                             <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded text-xs text-white/90 font-medium">
                                                 AI Generated

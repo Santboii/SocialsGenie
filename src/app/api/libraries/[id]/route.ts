@@ -64,7 +64,7 @@ export async function PUT(
     const body = await request.json();
 
     // Fields allowed to update
-    const updates: any = {};
+    const updates: Record<string, unknown> = {};
     if (body.name !== undefined) updates.name = body.name;
     if (body.topic_prompt !== undefined) updates.topic_prompt = body.topic_prompt;
     if (body.is_paused !== undefined) updates.is_paused = body.is_paused;

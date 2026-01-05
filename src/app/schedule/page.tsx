@@ -5,7 +5,10 @@ import { X, GripVertical, CalendarPlus } from 'lucide-react';
 import styles from './Schedule.module.css';
 import { ContentLibrary, WeeklySlot, PlatformId } from '@/types';
 import ConfirmModal from '@/components/ui/ConfirmModal';
-import { useWeeklySlots, useLibraries } from '@/hooks/useQueries';
+import { WeeklyScheduleSlot, useWeeklySlots } from '@/hooks/queries/useSchedule';
+import { useLibraries } from '@/hooks/useQueries';
+
+
 import { DndContext, DragEndEvent, useDraggable, useDroppable, DragOverlay, DragStartEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useQueryClient } from '@tanstack/react-query';
@@ -24,7 +27,7 @@ function DraggableSlot({
     isOverlay = false,
     style: styleOverride = {}
 }: {
-    slot: WeeklySlot & { content_libraries?: any },
+    slot: WeeklySlot | WeeklyScheduleSlot,
     onClick?: (e: React.MouseEvent) => void,
     onDelete?: (e: React.MouseEvent, id: string) => void,
     isOverlay?: boolean,
@@ -39,12 +42,12 @@ function DraggableSlot({
     const top = hour * 75; // 75px per hour - relative to parent day column
 
     // Get library platforms for icons
-    const libraryPlatforms: PlatformId[] = slot.content_libraries?.platforms || [];
+    const libraryPlatforms: PlatformId[] = (slot as WeeklyScheduleSlot).content_libraries?.platforms || [];
 
     const baseStyle: React.CSSProperties = {
         top: isOverlay ? 0 : `${top + 4}px`,
         height: `67px`,
-        backgroundColor: slot.content_libraries?.color || '#6366f1',
+        backgroundColor: (slot as WeeklyScheduleSlot).content_libraries?.color || '#6366f1',
         transform: CSS.Translate.toString(transform),
         opacity: isDragging ? 0 : 1,
         zIndex: isOverlay ? 999 : (isDragging ? 100 : 10),
@@ -67,7 +70,7 @@ function DraggableSlot({
             className={styles.slot}
             {...attributes}
             onClick={onClick}
-            title={`${slot.content_libraries?.name} (${slot.time_of_day})`}
+            title={`${(slot as WeeklyScheduleSlot).content_libraries?.name} (${slot.time_of_day})`}
             data-dragging={isDragging}
         >
             {/* Drag Handle - only this part initiates drag */}
@@ -82,7 +85,7 @@ function DraggableSlot({
             {/* Clickable content area */}
             <div className={styles.slotContent}>
                 <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {slot.content_libraries?.name || 'Unknown'}
+                    {(slot as WeeklyScheduleSlot).content_libraries?.name || 'Unknown'}
                 </div>
                 <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>
                     {slot.time_of_day.slice(0, 5)}
@@ -142,12 +145,11 @@ export default function SchedulePage() {
     const queryClient = useQueryClient();
 
     // Data Queries
-    const { data: rawSlots, refetch: refetchSlots, isLoading: slotsLoading, isError: slotsError, error: slotsErr } = useWeeklySlots();
+    const { data: rawSlots, refetch: refetchSlots, isError: slotsError, error: slotsErr } = useWeeklySlots();
     const slots = rawSlots || EMPTY_SLOTS;
 
-    const { data: libraries = [], isLoading: libsLoading, isError: libsError, error: libsErr } = useLibraries();
+    const { data: libraries = [], isError: libsError, error: libsErr } = useLibraries();
 
-    const isLoading = slotsLoading || libsLoading;
     const isError = slotsError || libsError;
 
     // Local UI State
@@ -168,7 +170,7 @@ export default function SchedulePage() {
         if (libraries.length > 0 && !selectedLibraryId) {
             setSelectedLibraryId(libraries[0].id);
         }
-    }, [libraries]);
+    }, [libraries, selectedLibraryId]);
 
     const openAddModal = () => {
         const today = new Date().getDay();
@@ -188,7 +190,7 @@ export default function SchedulePage() {
     };
 
 
-    const openEditModal = (slot: WeeklySlot) => {
+    const openEditModal = (slot: WeeklySlot | WeeklyScheduleSlot) => {
         setSelectedDay(slot.day_of_week);
         const [hour] = slot.time_of_day.split(':').map(Number);
         setSelectedHour(hour);
@@ -344,10 +346,10 @@ export default function SchedulePage() {
     // Helper to render slots in a day column
     const renderSlotsForDay = (dayIndex: number) => {
         // Render directly from useQuery slots (which encapsulates optimistic updates)
-        const daySlots = slots.filter((s: WeeklySlot) => s.day_of_week === dayIndex);
+        const daySlots = (slots as (WeeklySlot | WeeklyScheduleSlot)[]).filter((s) => s.day_of_week === dayIndex);
 
         // Group slots by hour to handle overlaps
-        const slotsByHour: Record<number, WeeklySlot[]> = {};
+        const slotsByHour: Record<number, (WeeklySlot | WeeklyScheduleSlot)[]> = {};
         daySlots.forEach(slot => {
             const hour = parseInt(slot.time_of_day.split(':')[0]);
             if (!slotsByHour[hour]) slotsByHour[hour] = [];
@@ -355,9 +357,9 @@ export default function SchedulePage() {
         });
 
         // Flatten back to array with calculated styles
-        const renderedSlots: any[] = [];
+        const renderedSlots: React.ReactNode[] = [];
 
-        Object.entries(slotsByHour).forEach(([hourStr, hourSlots]) => {
+        Object.values(slotsByHour).forEach((hourSlots) => {
             const count = hourSlots.length;
             // Sort by ID or creation time to ensure stable order? 
             // Slots come ordered by time_of_day, so stable sort is good.
@@ -400,7 +402,7 @@ export default function SchedulePage() {
                 <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     <h2>Unable to load schedule</h2>
                     <p style={{ marginBottom: '1rem', color: 'red' }}>
-                        {(slotsErr as any)?.message || (libsErr as any)?.message || 'Something went wrong.'}
+                        {(slotsErr instanceof Error ? slotsErr.message : '') || (libsErr instanceof Error ? libsErr.message : '') || 'Something went wrong.'}
                     </p>
                     <p>Please check your database migrations if this persists.</p>
                     <button
@@ -457,7 +459,7 @@ export default function SchedulePage() {
                     <div className={styles.calendarWrapper}>
                         <div className={styles.daysHeader}>
                             <div className={styles.timeColHeader} />
-                            {DAYS.map((day, i) => (
+                            {DAYS.map((day) => (
                                 <div key={day} className={styles.dayHeader}>
                                     {day}
                                 </div>
@@ -518,7 +520,7 @@ export default function SchedulePage() {
                                             required
                                         >
                                             <option value="" disabled>Choose a library...</option>
-                                            {libraries.map((lib: any) => (
+                                            {libraries.map((lib) => (
                                                 <option key={lib.id} value={lib.id}>
                                                     {lib.name} ({lib.post_count || 0} posts)
                                                 </option>

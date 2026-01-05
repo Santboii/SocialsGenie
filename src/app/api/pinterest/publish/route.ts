@@ -12,8 +12,11 @@ export async function POST(req: NextRequest) {
 
         const result = await createPin(accessToken, boardId, title, description, imageUrl, link);
         return NextResponse.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Pinterest Publish API Error:', error);
-        return NextResponse.json({ error: error.message || 'Failed to publish to Pinterest' }, { status: 500 });
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Failed to publish to Pinterest' },
+            { status: 500 }
+        );
     }
 }

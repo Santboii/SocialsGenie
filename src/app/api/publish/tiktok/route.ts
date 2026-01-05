@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { postVideo, refreshAccessToken } from '@/lib/social/tiktok';
 
+import { MediaAttachment } from '@/types';
+
 export async function POST(request: Request) {
     try {
-        const { postId, content, media } = await request.json();
+        const { content, media } = await request.json();
 
         // 1. Authenticate check
         const supabase = await createClient();
@@ -15,7 +17,7 @@ export async function POST(request: Request) {
         }
 
         // 2. Validate Media (Video required)
-        const videoMedia = media?.find((m: any) => m.type === 'video');
+        const videoMedia = media?.find((m: MediaAttachment) => m.type === 'video');
         if (!videoMedia || !videoMedia.url) {
             return NextResponse.json({ error: 'Video is required for TikTok' }, { status: 400 });
         }
@@ -72,8 +74,11 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('TikTok publish error:', error);
-        return NextResponse.json({ error: error.message || 'Failed to publish to TikTok' }, { status: 500 });
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Failed to publish to TikTok' },
+            { status: 500 }
+        );
     }
 }

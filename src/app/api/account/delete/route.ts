@@ -60,10 +60,10 @@ export async function DELETE() {
         console.log(`Account deleted for user: ${userId}`);
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Account deletion error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to delete account' },
+            { error: error instanceof Error ? error.message : 'Failed to delete account' },
             { status: 500 }
         );
     }

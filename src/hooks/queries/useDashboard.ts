@@ -14,6 +14,8 @@ interface Activity {
     type: string;
     description: string;
     created_at: string;
+    timestamp?: string;
+    message?: string;
 }
 
 export function useDashboardStats() {

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
             // Assuming post.media is stored as array of objects in DB or helper needed
             // For now, let's assume if it's coming from DB it might need parsing or is JSONB
             // This is a simplification, actual data structure of `posts.media` matters
-            postMedia = post.media as any;
+            postMedia = (post.media || []) as { url: string, alt?: string }[];
         } else if (content) {
             postContent = content;
             postMedia = media;
@@ -123,8 +123,8 @@ export async function POST(request: NextRequest) {
             platformId: result.id, // LinkedIn generic URN
         });
 
-    } catch (error) {
-        console.error('LinkedIn publish error:', error);
+    } catch (error: unknown) {
+        console.error('LinkedIn Publish Error:', error);
         return NextResponse.json(
             { error: error instanceof Error ? error.message : 'Failed to publish to LinkedIn' },
             { status: 500 }

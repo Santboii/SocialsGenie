@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import styles from './Sidebar.module.css';
 
-import { LayoutDashboard, PenSquare, Calendar, FileText, Settings, Repeat, Library, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, PenSquare, FileText, Settings, Repeat, Library, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 
 interface NavItem {

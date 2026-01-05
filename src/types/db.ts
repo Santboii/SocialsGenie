@@ -1,4 +1,4 @@
-import { PlatformId, PostStatus, MediaAttachment } from './app';
+import { PlatformId, PostStatus, MediaAttachment, LibraryAiSettings } from './app';
 
 export interface Post {
     id: string;
@@ -27,9 +27,10 @@ export interface ContentLibrary {
     generate_images?: boolean;
     topic_prompt?: string;
     template_type?: string;
-    ai_settings?: any; // Using any for now to avoid circular deps if needed, or stick to the defined type if available
+    ai_settings?: LibraryAiSettings;
     platforms?: PlatformId[];
     created_at: string;
+    post_count?: number;
 }
 
 export interface WeeklySlot {
@@ -39,7 +40,7 @@ export interface WeeklySlot {
     day_of_week: number; // 0-6
     time_of_day: string; // "09:00:00"
     platform_ids: PlatformId[];
-    created_at: string;
+    created_at?: string;
 }
 
 // User/Settings types

@@ -176,6 +176,20 @@ export function isOverLimit(content: string, platformId: PlatformId): boolean {
 // Library Template types
 export type LibraryTemplateType = 'tips' | 'facts' | 'quotes' | 'promos' | 'custom';
 
+export interface LibraryAiSettings {
+    tone?: string;
+    custom_tone?: string;
+    length?: 'short' | 'medium' | 'long';
+    audience?: string;
+    language?: string;
+    hashtag_strategy?: 'none' | 'auto' | 'custom';
+    custom_hashtags?: string;
+    use_emojis?: boolean;
+    generate_images?: boolean;
+    pinterest_board_id?: string;
+    [key: string]: unknown;
+}
+
 export interface LibraryTemplate {
     id: LibraryTemplateType;
     name: string;

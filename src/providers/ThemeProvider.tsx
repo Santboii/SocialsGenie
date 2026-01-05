@@ -20,6 +20,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const saved = localStorage.getItem('theme') as Theme | null;
         if (saved && ['light', 'dark', 'system'].includes(saved)) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setThemeState(saved);
         }
     }, []);
@@ -36,6 +37,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             effectiveTheme = theme;
         }
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setResolvedTheme(effectiveTheme);
         root.setAttribute('data-theme', effectiveTheme);
 

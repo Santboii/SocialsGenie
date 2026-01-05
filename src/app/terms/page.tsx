@@ -9,7 +9,7 @@ export default function TermsPage() {
             <section className={styles.section}>
                 <h2>1. Acceptance of Terms</h2>
                 <p>
-                    By accessing or using SocialsGenie ("the Service"), you agree to be bound by these Terms of Use.
+                    By accessing or using SocialsGenie (&quot;the Service&quot;), you agree to be bound by these Terms of Use.
                     If you do not agree to these terms, please do not use the Service.
                 </p>
             </section>
@@ -67,7 +67,7 @@ export default function TermsPage() {
             <section className={styles.section}>
                 <h2>7. Limitation of Liability</h2>
                 <p>
-                    The Service is provided "as is" without warranties of any kind. We shall not be liable
+                    The Service is provided &quot;as is&quot; without warranties of any kind. We shall not be liable
                     for any indirect, incidental, special, or consequential damages arising from your use
                     of the Service.
                 </p>

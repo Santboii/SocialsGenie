@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { GoogleGeminiService } from '@/lib/ai/google';
-import { LibraryAiSettings } from '@/components/libraries/LibrarySettingsModal';
+import { LibraryAiSettings } from '@/types';
+
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const aiService = new GoogleGeminiService(process.env.GOOGLE_API_KEY || '');
 
@@ -151,7 +153,6 @@ EXAMPLE JSON STRUCTURE:
 
         // We need to restore the GoogleGenerativeAI import or assume it's available.
         // The previous code had it.
-        const { GoogleGenerativeAI } = require('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
         const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
@@ -185,7 +186,7 @@ EXAMPLE JSON STRUCTURE:
 
         // Generate images if requested
         const postsWithMedia = await Promise.all(generatedItems.map(async (item) => {
-            let media = [];
+            const media: { id: string; type: 'image'; url: string }[] = [];
             // Use the consistent flag we derived earlier
             if (shouldGenerateImages && item.imagePrompt) {
                 try {

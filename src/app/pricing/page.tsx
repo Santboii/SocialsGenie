@@ -34,7 +34,7 @@ export default function PricingPage() {
                     <span className={styles.textGradient}>Select a Plan</span>
                 </h1>
                 <p className={styles.subtitle}>
-                    Start for free, scale when you're ready.
+                    Start for free, scale when you&apos;re ready.
                 </p>
 
                 {/* Toggle */}
@@ -162,6 +162,7 @@ export default function PricingPage() {
                         question="What is 'Brand Voice DNA'?"
                         answer="Brand Voice DNA allows you to upload examples of your writing style. Our AI analyzes it and generates new posts that sound exactly like you, not a robot."
                     />
+
                 </div>
             </section>
 

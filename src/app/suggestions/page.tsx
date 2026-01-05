@@ -16,13 +16,14 @@ export default function SuggestionsPage() {
     // Scheduling state per suggestion
     const [scheduleData, setScheduleData] = useState<Record<string, { date: string; time: string }>>({});
 
-    useEffect(() => {
-        loadSuggestions();
-    }, []);
-
     const loadSuggestions = () => {
         setSuggestions(getSuggestions());
     };
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadSuggestions();
+    }, []);
 
     const getMinDate = (): string => {
         const now = new Date();

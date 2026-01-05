@@ -8,20 +8,7 @@ import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 
 // ...
 
-import { PLATFORMS, PlatformId } from '@/types';
-
-export interface LibraryAiSettings {
-    tone?: string;
-    custom_tone?: string;
-    length?: 'short' | 'medium' | 'long';
-    audience?: string;
-    language?: string;
-    hashtag_strategy?: 'none' | 'auto' | 'custom';
-    custom_hashtags?: string;
-    use_emojis?: boolean;
-    generate_images?: boolean;
-    pinterest_board_id?: string;
-}
+import { PLATFORMS, PlatformId, LibraryAiSettings } from '@/types';
 
 interface LibrarySettingsModalProps {
     isOpen: boolean;
@@ -81,7 +68,7 @@ export default function LibrarySettingsModal({
         }
     }, [isOpen, initialSettings, initialPlatforms, initialName, initialTopic]);
 
-    const handleChange = (field: keyof LibraryAiSettings, value: any) => {
+    const handleChange = (field: keyof LibraryAiSettings, value: string | boolean | undefined) => {
         setSettings(prev => ({ ...prev, [field]: value }));
     };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { PLATFORMS, PlatformId } from '@/types';
 import { getSupabase } from '@/lib/supabase';
@@ -12,6 +13,14 @@ import BrandSettings from '@/components/settings/BrandSettings';
 import styles from './page.module.css';
 
 type SettingsTab = 'account' | 'connections' | 'brand';
+
+interface LinkedInAccount {
+    id: string;
+    name: string;
+    image?: string;
+    type: 'organization' | 'person';
+    selected?: boolean;
+}
 
 // Theme toggle component
 function ThemeToggle() {
@@ -57,7 +66,7 @@ function PlatformCard({
     comingSoon = false
 }: {
     platformId: PlatformId;
-    connection: any;
+    connection: { platform_username?: string | null } | null;
     onConnect: () => void;
     onDisconnect: () => void;
     onManage?: () => void;
@@ -110,7 +119,7 @@ export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState<SettingsTab>('account');
 
     // Use cached query for connections
-    const { data: connections = [], isLoading: loading } = useConnections();
+    const { data: connections = [] } = useConnections();
     const invalidateConnections = useInvalidateConnections();
 
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -133,13 +142,15 @@ export default function SettingsPage() {
 
         if (success) {
             setMessage({ type: 'success', text: success });
-            invalidateConnections();
+            if (searchParams.get('connected') === 'true') {
+                invalidateConnections();
+            }
             window.history.replaceState({}, '', '/settings');
         } else if (error) {
             setMessage({ type: 'error', text: error });
             window.history.replaceState({}, '', '/settings');
         }
-    }, [searchParams]);
+    }, [searchParams, invalidateConnections]);
 
     const getConnection = (platformId: PlatformId) => {
         return connections.find(c => c.platform === platformId);
@@ -175,7 +186,7 @@ export default function SettingsPage() {
 
     // LinkedIn Page Selection State
     const [showLinkedInModal, setShowLinkedInModal] = useState(false);
-    const [linkedInAccounts, setLinkedInAccounts] = useState<any[]>([]);
+    const [linkedInAccounts, setLinkedInAccounts] = useState<LinkedInAccount[]>([]);
     const [loadingAccounts, setLoadingAccounts] = useState(false);
 
     const handleManageLinkedIn = async () => {
@@ -187,15 +198,14 @@ export default function SettingsPage() {
             if (data.accounts) {
                 setLinkedInAccounts(data.accounts);
             }
-        } catch (err) {
-            console.error(err);
+        } catch {
             setMessage({ type: 'error', text: 'Failed to load LinkedIn pages' });
         } finally {
             setLoadingAccounts(false);
         }
     };
 
-    const handleSelectLinkedInAccount = async (account: any) => {
+    const handleSelectLinkedInAccount = async (account: LinkedInAccount) => {
         try {
             const res = await fetch('/api/linkedin/select-page', {
                 method: 'POST',
@@ -211,7 +221,7 @@ export default function SettingsPage() {
             setShowLinkedInModal(false);
             setMessage({ type: 'success', text: `Switched posting to ${account.name}` });
             invalidateConnections();
-        } catch (err) {
+        } catch {
             setMessage({ type: 'error', text: 'Failed to save selection' });
         }
     };
@@ -233,8 +243,9 @@ export default function SettingsPage() {
             const supabase = getSupabase();
             await supabase.auth.signOut();
             window.location.href = '/landing?deleted=true';
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message || 'Failed to delete account' });
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : 'Failed to delete account';
+            setMessage({ type: 'error', text: msg });
             setDeleting(false);
             setShowDeleteModal(false);
         }
@@ -292,7 +303,7 @@ export default function SettingsPage() {
                                     <PlatformCard
                                         key={platformId}
                                         platformId={platformId}
-                                        connection={getConnection(platformId)}
+                                        connection={getConnection(platformId) || null}
                                         onConnect={connectHandlers[platformId]}
                                         onDisconnect={() => setPendingDisconnect(platformId)}
                                         onManage={platformId === 'linkedin' ? handleManageLinkedIn : undefined}
@@ -395,7 +406,13 @@ export default function SettingsPage() {
                                     >
                                         <div className={styles.accountIcon}>
                                             {account.image ? (
-                                                <img src={account.image} alt="" />
+                                                <Image
+                                                    src={account.image || ''}
+                                                    alt=""
+                                                    width={24}
+                                                    height={24}
+                                                    unoptimized
+                                                />
                                             ) : (
                                                 <span>{account.type === 'organization' ? '🏢' : '👤'}</span>
                                             )}

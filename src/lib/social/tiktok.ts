@@ -198,7 +198,24 @@ interface InitUploadResponse {
     upload_id: string;
 }
 
-async function initVideoUpload(accessToken: string, postInfo: any): Promise<InitUploadResponse> {
+interface PostInfo {
+    post_info: {
+        title: string;
+        privacy_level: string;
+        disable_duet: boolean;
+        disable_comment: boolean;
+        disable_stitch: boolean;
+        video_cover_timestamp_ms: number;
+    };
+    source_info: {
+        source: string;
+        video_size: number;
+        chunk_size: number;
+        total_chunk_count: number;
+    };
+}
+
+async function initVideoUpload(accessToken: string, postInfo: PostInfo): Promise<InitUploadResponse> {
     const response = await fetch(`${API_BASE}/post/publish/video/init/`, {
         method: 'POST',
         headers: {
@@ -259,7 +276,7 @@ export async function postVideo(
             'Content-Length': fileBuffer.length.toString(),
             'Content-Range': `bytes 0-${fileBuffer.length - 1}/${fileBuffer.length}`
         },
-        body: fileBuffer as any
+        body: fileBuffer as unknown as BodyInit
     });
 
     if (!uploadResponse.ok) {

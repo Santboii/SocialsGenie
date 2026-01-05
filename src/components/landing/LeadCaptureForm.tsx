@@ -31,9 +31,9 @@ export default function LeadCaptureForm() {
             setStatus('success');
             setMessage(data.message || "You're in! Welcome to SocialsGenie.");
             setEmail('');
-        } catch (err: any) {
+        } catch (err: unknown) {
             setStatus('error');
-            setMessage(err.message || 'Failed to submit. Please try again.');
+            setMessage(err instanceof Error ? err.message : 'Failed to submit. Please try again.');
         }
     };
 

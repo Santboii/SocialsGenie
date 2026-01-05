@@ -1,11 +1,5 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import {
-    generateState,
-    getTikTokAuthUrl,
-    generateCodeVerifier,
-    generateCodeChallenge
-} from '@/lib/social/tiktok';
+import { getTikTokAuthUrl, generateState } from '@/lib/social/tiktok';
 
 /**
  * Initiates TikTok OAuth 2.0 authorization flow

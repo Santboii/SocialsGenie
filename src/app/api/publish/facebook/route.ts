@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
         // Extract all image URLs
         // We now support multi-photo posts via the updated client
         const mediaUrls = (media || [])
-            .filter((m: any) => m.type === 'image')
-            .map((m: any) => m.url);
+            .filter((m: { type: string; url: string }) => m.type === 'image')
+            .map((m: { type: string; url: string }) => m.url);
 
         const result = await postToFacebookPage(page.id, page.accessToken, content || '', mediaUrls);
 
@@ -103,10 +103,10 @@ export async function POST(request: NextRequest) {
             platformPostId: result.id,
             page: page.name,
         });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Facebook publish error:', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Failed to publish' },
+            { error: error instanceof Error ? error.message : 'Failed to publish to Facebook' },
             { status: 500 }
         );
     }

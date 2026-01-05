@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { PlatformId, ToneType, PLATFORMS } from '@/types';
-import { addSuggestion, getPosts } from '@/lib/storage';
+import { addSuggestion } from '@/lib/storage';
 import styles from './AIComposeModal.module.css';
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 
@@ -42,14 +42,7 @@ export default function AIComposeModal({ isOpen, onClose, onGenerated }: AICompo
         setError(null);
 
         try {
-            // Get past posts for style matching
-            const pastPosts = getPosts()
-                .slice(0, 5)
-                .map(p => p.content);
 
-            // URL content collection would go here if we re-implement it server side or with a new helper
-            // For now, we rely on the topic and title only
-            const urlContent = undefined;
 
             // The backend now expects a single platform string, not an array.
             // We'll generate for each selected platform individually or just pick the first one for now

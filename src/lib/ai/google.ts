@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { AIProvider, GeneratedPost, PostGenerationParams } from './types';
 
 const PLATFORM_GUIDES: Record<string, { maxChars: number; style: string }> = {
@@ -34,7 +34,7 @@ const PLATFORM_GUIDES: Record<string, { maxChars: number; style: string }> = {
 
 export class GoogleGeminiService implements AIProvider {
     private genAI: GoogleGenerativeAI;
-    private textModel: any;
+    private textModel: GenerativeModel;
 
     constructor(apiKey: string) {
         this.genAI = new GoogleGenerativeAI(apiKey);
@@ -88,7 +88,7 @@ Do not wrap in markdown code blocks. Just valid JSON.
         }
     }
 
-    async generateImage(prompt: string, aspectRatio: string = '1:1'): Promise<string> {
+    async generateImage(prompt: string): Promise<string> {
         try {
             // Use the newly confirmed Gemini 2.5 Flash Image model ("Nano Banana")
             // This natively generates images without needing Vertex AI

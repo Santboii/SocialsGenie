@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
 import { GoogleGeminiService } from '@/lib/ai/google';
-import { BrandProfile } from '@/types';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -74,10 +73,10 @@ export async function POST(req: Request) {
             imageUrl
         });
 
-    } catch (error: any) {
-        console.error('AI Generation Error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    } catch (error) {
+        console.error('Generation error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to generate content' },
+            { error: error instanceof Error ? error.message : 'Failed to generate content' },
             { status: 500 }
         );
     }

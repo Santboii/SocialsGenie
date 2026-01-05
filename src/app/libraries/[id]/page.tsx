@@ -1,14 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Sparkles, Pause, Play, Edit3, FileText, Loader2, Check, X, Settings, MessageCircle, Hash, Users, Smile, Trash2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, Pause, Play, Edit3, FileText, Loader2, Settings, MessageCircle, Hash, Users, Trash2 } from 'lucide-react';
+import { useLibrary, useLibraryPosts, LibraryResponse } from '@/hooks/queries/useLibraries';
 import { useQueryClient } from '@tanstack/react-query';
 import styles from './LibraryDetail.module.css';
-import { ContentLibrary, Post, PLATFORMS, PlatformId } from '@/types';
+import { PLATFORMS, LibraryAiSettings, PlatformId } from '@/types';
 import { deletePost } from '@/lib/db';
-import LibrarySettingsModal, { LibraryAiSettings } from '@/components/libraries/LibrarySettingsModal';
+import LibrarySettingsModal from '@/components/libraries/LibrarySettingsModal';
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 
@@ -18,11 +20,12 @@ export default function LibraryDetailPage() {
     const queryClient = useQueryClient();
     const libraryId = params.id as string;
 
-    const [library, setLibrary] = useState<ContentLibrary & { ai_settings?: LibraryAiSettings } | null>(null);
-    const [posts, setPosts] = useState<(Post & { post_platforms?: { platform: string }[] })[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { data: library, isLoading: isLibraryLoading, error: libraryError } = useLibrary(libraryId);
+    const { data: postsData, isLoading: isPostsLoading } = useLibraryPosts(libraryId);
+    const posts = postsData || [];
+
     const [isGenerating, setIsGenerating] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [localError] = useState<string | null>(null);
 
     // AI Settings Modal
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -31,28 +34,8 @@ export default function LibraryDetailPage() {
     const [showDeleteLibraryConfirm, setShowDeleteLibraryConfirm] = useState(false);
     const [showDeletePostConfirm, setShowDeletePostConfirm] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (libraryId) {
-            fetchLibraryAndPosts();
-        }
-    }, [libraryId]);
-
-    const fetchLibraryAndPosts = async () => {
-        try {
-            setIsLoading(true);
-            const libRes = await fetch(`/api/libraries/${libraryId}`);
-            if (!libRes.ok) {
-                throw new Error('Library not found');
-            }
-            const libData = await libRes.json();
-            setLibrary(libData.library);
-            setPosts(libData.posts || []);
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const isLoading = isLibraryLoading || isPostsLoading;
+    const error = libraryError ? (libraryError instanceof Error ? libraryError.message : 'Failed to load library') : localError;
 
     const handleSaveAiSettings = async (name: string, topic: string, settings: LibraryAiSettings, platforms: PlatformId[]) => {
         if (!library) return;
@@ -70,12 +53,18 @@ export default function LibraryDetailPage() {
             });
 
             if (res.ok) {
-                setLibrary({
-                    ...library,
-                    name: name.trim(),
-                    topic_prompt: topic.trim(),
-                    ai_settings: settings,
-                    platforms: platforms
+                queryClient.setQueryData(['libraries', libraryId], (old: LibraryResponse | undefined) => {
+                    if (!old) return old;
+                    return {
+                        ...old,
+                        library: {
+                            ...old.library,
+                            name: name.trim(),
+                            topic_prompt: topic.trim(),
+                            ai_settings: settings,
+                            platforms: platforms
+                        }
+                    };
                 });
             } else {
                 alert('Failed to save settings');
@@ -109,7 +98,7 @@ export default function LibraryDetailPage() {
             });
 
             if (res.ok) {
-                fetchLibraryAndPosts();
+                queryClient.invalidateQueries({ queryKey: ['libraries', libraryId] });
             } else {
                 const err = await res.json();
                 alert(`Failed to generate: ${err.error}`);
@@ -135,7 +124,13 @@ export default function LibraryDetailPage() {
             });
 
             if (res.ok) {
-                setLibrary({ ...library, is_paused: !library.is_paused });
+                queryClient.setQueryData(['libraries', libraryId], (old: LibraryResponse | undefined) => {
+                    if (!old) return old;
+                    return {
+                        ...old,
+                        library: { ...old.library, is_paused: !library.is_paused }
+                    };
+                });
             }
         } catch (error) {
             console.error('Failed to toggle pause:', error);
@@ -180,7 +175,13 @@ export default function LibraryDetailPage() {
 
         try {
             await deletePost(postId);
-            setPosts(posts.filter(p => p.id !== postId));
+            queryClient.setQueryData(['libraries', libraryId], (old: LibraryResponse | undefined) => {
+                if (!old) return old;
+                return {
+                    ...old,
+                    posts: old.posts.filter((p) => p.id !== postId)
+                };
+            });
         } catch (error) {
             console.error('Failed to delete post:', error);
             alert('Failed to delete post');
@@ -190,10 +191,11 @@ export default function LibraryDetailPage() {
     };
 
     const getPostStats = () => {
-        const total = posts.length;
-        const scheduled = posts.filter(p => p.status === 'scheduled').length;
-        const published = posts.filter(p => p.status === 'published').length;
-        const drafts = posts.filter(p => p.status === 'draft').length;
+        const safePosts = posts || [];
+        const total = safePosts.length;
+        const scheduled = safePosts.filter(p => p.status === 'scheduled').length;
+        const published = safePosts.filter(p => p.status === 'published').length;
+        const drafts = safePosts.filter(p => p.status === 'draft').length;
         return { total, scheduled, published, drafts };
     };
 
@@ -308,20 +310,20 @@ export default function LibraryDetailPage() {
                         {/* Platform Icons */}
                         {library.platforms && library.platforms.length > 0 && (
                             <div className={styles.platformRow} style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                                {library.platforms.map(pid => {
-                                    const p = PLATFORMS.find(pl => pl.id === pid);
+                                {library.platforms?.map((platform: PlatformId) => {
+                                    const p = PLATFORMS.find(pl => pl.id === platform);
                                     return p ? (
                                         <div
-                                            key={pid}
+                                            key={platform}
                                             className={styles.platformIconWrapper}
                                             title={`${p.name} - This library posts to ${p.name}`}
                                             style={{
-                                                color: p.color,
-                                                borderColor: p.color + '40', // 25% opacity border
-                                                backgroundColor: p.color + '10' // 6% opacity bg
+                                                backgroundColor: p.color,
+                                                color: '#fff',
+                                                // ... using platform specific icon color usually
                                             }}
                                         >
-                                            {getPlatformIcon(pid, 24)}
+                                            {p.icon}
                                         </div>
                                     ) : null;
                                 })}
@@ -485,8 +487,14 @@ export default function LibraryDetailPage() {
                                         </div>
 
                                         {post.media && post.media.length > 0 && (
-                                            <div className={styles.cardMediaPreview}>
-                                                <img src={post.media[0].url} alt="Post media" loading="lazy" />
+                                            <div className={styles.cardMediaPreview} style={{ position: 'relative', width: '100%', height: '200px' }}>
+                                                <Image
+                                                    src={post.media[0].url}
+                                                    alt="Post media"
+                                                    fill
+                                                    style={{ objectFit: 'cover' }}
+                                                    unoptimized
+                                                />
                                                 {post.media.length > 1 && (
                                                     <span className={styles.mediaCount}>+{post.media.length - 1}</span>
                                                 )}

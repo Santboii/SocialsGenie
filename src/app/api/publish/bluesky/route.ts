@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: 'Post not found' }, { status: 404 });
             }
             postContent = post.content;
-            postMedia = post.media as any;
+            postMedia = (post.media || []) as { url: string, alt?: string }[];
         } else if (content) {
             postContent = content;
             postMedia = media;
@@ -75,15 +75,16 @@ export async function POST(request: NextRequest) {
 
         // Retrieve DPoP keys if available
         let dpopKey;
-        if (connection.credentials &&
-            (connection.credentials as any).dpop_private_key &&
-            (connection.credentials as any).dpop_public_key
+        const credentials = connection.credentials as { dpop_private_key?: Record<string, unknown>; dpop_public_key?: Record<string, unknown> } | null;
+
+        if (credentials &&
+            credentials.dpop_private_key &&
+            credentials.dpop_public_key
         ) {
-            const creds = connection.credentials as any;
             // Import JWKs back to Keys to create the DpopKeyPair object
             const { importFromJSON } = await import('@/lib/social/bluesky');
-            const privateKey = await importFromJSON(creds.dpop_private_key);
-            const publicKey = await importFromJSON(creds.dpop_public_key);
+            const privateKey = await importFromJSON(credentials.dpop_private_key);
+            const publicKey = await importFromJSON(credentials.dpop_public_key);
 
             dpopKey = {
                 privateKey,

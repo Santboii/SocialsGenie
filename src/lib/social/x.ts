@@ -300,7 +300,7 @@ export async function postTweet(
     text: string,
     mediaIds: string[] = []
 ): Promise<{ id: string; text: string }> {
-    const body: any = { text };
+    const body: Record<string, unknown> = { text };
 
     if (mediaIds.length > 0) {
         body.media = { media_ids: mediaIds };

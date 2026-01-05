@@ -31,9 +31,9 @@ export default function WaitlistForm() {
             setStatus('success');
             setMessage(data.message || "You're on the list! Watch your inbox.");
             setEmail('');
-        } catch (err: any) {
+        } catch (err: unknown) {
             setStatus('error');
-            setMessage(err.message || 'Failed to join. Please try again.');
+            setMessage(err instanceof Error ? err.message : 'Failed to join. Please try again.');
         }
     };
 

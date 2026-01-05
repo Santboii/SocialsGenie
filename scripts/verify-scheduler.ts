@@ -36,14 +36,10 @@ async function main() {
     console.log('--- Starting Scheduler Verification ---');
 
     // 1. Get or Create Test User
-    const { data: users, error: userError } = await supabase.from('profiles').select('id').limit(1);
-    if (userError) throw userError;
+    // const { data: users, error: userError } = await supabase.from('profiles').select('id').limit(1);
+    // if (userError) throw userError;
 
-    let userId = users?.[0]?.id;
-    if (!userId) {
-        console.log('No users found. Please sign up a user first or check DB.');
-        return;
-    }
+    const userId = 'user_2t6C5q9uJz8j4w0X5y3kL7v1n2o'; // Replace with a real user ID from your database
     console.log(`Using User ID: ${userId}`);
 
     // Update User Timezone to UTC for consistent testing

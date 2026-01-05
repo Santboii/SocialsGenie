@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { postTweet, refreshAccessToken, uploadMedia } from '@/lib/social/x';
+import { MediaAttachment } from '@/types';
 
 /**
  * Publish a tweet to X
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
         // Handle Media Attachments
         const mediaIds: string[] = [];
         if (postId) {
-            const { data: post, error: postError } = await supabase
+            const { data: post } = await supabase
                 .from('posts')
                 .select('content, media')
                 .eq('id', postId)
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
 
                 // Upload in parallel
                 // Fail-fast: If any image fails, the whole post fails.
-                const uploadedIds = await Promise.all(attachments.map(async (media: any) => {
+                const uploadedIds = await Promise.all(attachments.map(async (media: MediaAttachment) => {
                     // Fetch image buffer
                     const fileRes = await fetch(media.url);
                     if (!fileRes.ok) throw new Error(`Failed to fetch image: ${media.url}`);

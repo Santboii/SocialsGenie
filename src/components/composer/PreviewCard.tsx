@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { PlatformId, PLATFORMS, getCharacterLimit } from '@/types';
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 import { getCharStatus, getPlatformValidationError, CharStatus } from '@/hooks/usePlatformValidation';
@@ -82,7 +83,7 @@ export default function PreviewCard({
             {imagePreviews.length > 0 && (
                 <div className={styles.previewImages}>
                     {imagePreviews.map((preview, index) => (
-                        <img
+                        <Image
                             key={index}
                             src={preview}
                             alt={`Attachment ${index + 1}`}
@@ -91,7 +92,10 @@ export default function PreviewCard({
                                 e.stopPropagation();
                                 onImageClick?.(preview);
                             }}
-                            style={{ cursor: onImageClick ? 'pointer' : undefined }}
+                            width={48}
+                            height={48}
+                            unoptimized
+                            style={{ cursor: onImageClick ? 'pointer' : undefined, objectFit: 'cover' }}
                         />
                     ))}
                 </div>

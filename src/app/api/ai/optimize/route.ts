@@ -42,10 +42,9 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ content: optimizedContent });
 
-    } catch (error: any) {
-        console.error('Optimize Error:', error);
+    } catch (error) {
+        console.error('Optimization error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to optimize content' },
             { status: 500 }
         );
     }

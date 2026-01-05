@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { PlatformId, PLATFORMS, getCharacterLimit, Platform, MediaAttachment, generateId, ContentLibrary } from '@/types';
+import Image from 'next/image';
+import { PlatformId, PLATFORMS, getCharacterLimit, MediaAttachment, generateId, ContentLibrary } from '@/types';
 import { createPost, publishPost } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
 import { getPlatformIcon } from '@/components/ui/PlatformIcons';
 import { useInvalidatePosts, useLibraries, useConnections } from '@/hooks/useQueries';
-import { getCharStatus, hasAnyCharError, getFirstPlatformError, getPlatformValidationError } from '@/hooks/usePlatformValidation';
-import { Library, Calendar as CalendarIcon, Repeat } from 'lucide-react';
+import { getCharStatus, getPlatformValidationError } from '@/hooks/usePlatformValidation';
+import { Library, Calendar as CalendarIcon } from 'lucide-react';
 import MediaUploader from './MediaUploader';
 import ConfirmModal from '../ui/ConfirmModal';
 
@@ -34,8 +35,7 @@ export default function PostComposer() {
     const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformId[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [connectedAccountsMap, setConnectedAccountsMap] = useState<Record<PlatformId, { username: string; handle: string }>>({} as any);
+    const [connectedAccountsMap, setConnectedAccountsMap] = useState<Partial<Record<PlatformId, { username: string; handle: string }>>>({});
 
     // AI Composers State
     const [showAIPanel, setShowAIPanel] = useState(false);
@@ -51,7 +51,7 @@ export default function PostComposer() {
     const [platformContent, setPlatformContent] = useState<Partial<Record<PlatformId, string>>>({});
 
     // Per-platform metadata (e.g. Pinterest Board ID)
-    const [platformMetadata, setPlatformMetadata] = useState<Record<PlatformId, any>>({
+    const [platformMetadata, setPlatformMetadata] = useState<Record<PlatformId, Record<string, unknown>>>({
         twitter: {},
         instagram: {},
         linkedin: {},
@@ -79,7 +79,7 @@ export default function PostComposer() {
 
     // Evergreen / Library Mode
     const [postMode, setPostMode] = useState<'schedule' | 'library'>('schedule');
-    const { data: fetchedLibraries, isLoading: isLoadingLibraries } = useLibraries();
+    const { data: fetchedLibraries } = useLibraries();
     const [libraries, setLibraries] = useState<ContentLibrary[]>([]);
     const [selectedLibraryId, setSelectedLibraryId] = useState('');
 
@@ -161,7 +161,7 @@ export default function PostComposer() {
     useEffect(() => {
         if (connectedAccountsData) {
             const connectedIds: PlatformId[] = [];
-            const accountMap: Record<PlatformId, { username: string; handle: string }> = {} as any;
+            const accountMap: Partial<Record<PlatformId, { username: string; handle: string }>> = {};
 
             connectedAccountsData.forEach((account) => {
                 const pid = account.platform;
@@ -192,6 +192,7 @@ export default function PostComposer() {
             }
         }
         setIsLoading(isLoadingConnections);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [connectedAccountsData, isLoadingConnections]);
 
     // Fetch Pinterest Boards if Pinterest is connected
@@ -350,12 +351,12 @@ export default function PostComposer() {
 
         const currentContent = getCurrentContent();
         if (!currentContent.trim()) {
-            setError('No content to optimize');
+            alert('No content to optimize');
             return;
         }
 
         setIsOptimizing(true);
-        setError(null);
+        setIsOptimizing(true);
 
         try {
             const response = await fetch('/api/ai/optimize', {
@@ -374,9 +375,11 @@ export default function PostComposer() {
 
             const data = await response.json();
             handleContentChange(data.content);
-        } catch (error: any) {
+            handleContentChange(data.content);
+        } catch (error: unknown) {
             console.error('Optimization failed', error);
-            setError(error.message || 'Failed to optimize content.');
+            const msg = error instanceof Error ? error.message : 'Failed to optimize content.';
+            alert(msg);
         } finally {
             setIsOptimizing(false);
         }
@@ -436,10 +439,7 @@ export default function PostComposer() {
         return null;
     };
 
-    // Use imported hasAnyCharError with local getContentForPlatform
-    const hasAnyError = (): boolean => {
-        return hasAnyCharError(selectedPlatforms, getContentForPlatform);
-    };
+
 
     const getScheduledDateTime = (): string | undefined => {
         if (!scheduleEnabled || !scheduleDate || !scheduleTime) return undefined;
@@ -578,7 +578,7 @@ export default function PostComposer() {
         if (!hasValidContent()) return;
 
         setIsSubmitting(true);
-        setError(null);
+        setIsSubmitting(true);
 
         try {
             // Upload images first
@@ -622,9 +622,11 @@ export default function PostComposer() {
 
             invalidatePosts(); // Refresh posts cache for immediate display
             router.push('/');
-        } catch (err) {
+            router.push('/');
+        } catch (err: unknown) {
             console.error('Failed to create post:', err);
-            setError(err instanceof Error ? err.message : 'Failed to create post');
+            const msg = err instanceof Error ? err.message : 'Failed to create post';
+            alert(msg);
         } finally {
             setIsSubmitting(false);
         }
@@ -728,7 +730,7 @@ export default function PostComposer() {
                                 </label>
                                 <select
                                     className={styles.boardSelect}
-                                    value={platformMetadata.pinterest?.boardId || ''}
+                                    value={(platformMetadata.pinterest?.boardId as string) || ''}
                                     onChange={(e) => setPlatformMetadata(prev => ({
                                         ...prev,
                                         pinterest: { ...prev.pinterest, boardId: e.target.value }
@@ -1042,7 +1044,7 @@ export default function PostComposer() {
                                     if (!aHasError && bHasError) return 1;
                                     return 0;
                                 })
-                                .map((platformId, index, sortedPlatforms) => {
+                                .map((platformId) => {
                                     const content = getContentForPlatform(platformId);
                                     const isCustom = hasCustomContent(platformId);
                                     const username = connectedAccountsMap[platformId]?.username || 'Your Name';
@@ -1103,7 +1105,15 @@ export default function PostComposer() {
                             >
                                 ✕
                             </button>
-                            <img src={previewImage} alt="Full size preview" />
+                            <Image
+                                src={previewImage}
+                                alt="Full size preview"
+                                className="object-contain w-full h-full"
+                                width={1200}
+                                height={800}
+                                style={{ width: '100%', height: '100%' }}
+                                unoptimized
+                            />
                         </div>
                     </div>
                 )
