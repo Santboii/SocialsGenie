@@ -13,7 +13,8 @@ const TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
 const API_BASE = 'https://open.tiktokapis.com/v2';
 
 // Required scopes
-const SCOPES = ['user.info.basic', 'video.upload', 'video.publish'];
+// Temporarily reduced for debugging 'client_key' error
+const SCOPES = ['user.info.basic']; //, 'video.upload', 'video.publish'];
 
 export interface TikTokTokens {
     accessToken: string;
@@ -85,6 +86,12 @@ export function getTikTokAuthUrl(
     });
 
     const authUrl = `${AUTH_URL}?${params.toString()}`;
+
+    // Log safe version of URL for debugging
+    const debugUrl = new URL(authUrl);
+    debugUrl.searchParams.set('client_key', 'REDACTED');
+    console.log('[TikTok Auth Debug] Full Redirect URL:', debugUrl.toString());
+
     return authUrl;
 }
 
