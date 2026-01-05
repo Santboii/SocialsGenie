@@ -13,8 +13,11 @@ const TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
 const API_BASE = 'https://open.tiktokapis.com/v2';
 
 // Required scopes
-// Temporarily reduced for debugging 'client_key' error
-const SCOPES = ['user.info.basic']; //, 'video.upload', 'video.publish'];
+const SCOPES = ['user.info.basic', 'video.upload', 'video.publish'];
+
+// Video constraints
+const MAX_VIDEO_SIZE_BYTES = 64 * 1024 * 1024; // 64MB (Limit for single-chunk upload)
+const ALLOWED_MIME_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
 
 export interface TikTokTokens {
     accessToken: string;
@@ -29,6 +32,31 @@ export interface TikTokUser {
     union_id?: string;
     avatar_url: string;
     display_name: string;
+}
+
+/**
+ * Validates video file against TikTok API constraints
+ */
+function validateVideo(fileBuffer: Buffer, mimeType: string = 'video/mp4'): void {
+    // 1. Check File Size
+    if (fileBuffer.length > MAX_VIDEO_SIZE_BYTES) {
+        throw new Error(
+            `Video size ${testFileSize(fileBuffer.length)} exceeds the 64MB limit for direct uploads. ` +
+            `Please compress the video or use a file smaller than 64MB.`
+        );
+    }
+
+    // 2. Check Format
+    if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+        throw new Error(`Unsupported video format: ${mimeType}. Allowed: MP4, MOV, WebM.`);
+    }
+
+    // Note: Duration (3s-10m) and Resolution check requires video processing library
+    // which is heavy for this environment. Client-side validation is recommended for these.
+}
+
+function testFileSize(bytes: number): string {
+    return `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
 }
 
 /**
@@ -86,12 +114,6 @@ export function getTikTokAuthUrl(
     });
 
     const authUrl = `${AUTH_URL}?${params.toString()}`;
-
-    // Log safe version of URL for debugging
-    const debugUrl = new URL(authUrl);
-    debugUrl.searchParams.set('client_key', 'REDACTED');
-    console.log('[TikTok Auth Debug] Full Redirect URL:', debugUrl.toString());
-
     return authUrl;
 }
 
