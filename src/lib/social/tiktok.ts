@@ -62,9 +62,18 @@ export function getTikTokAuthUrl(
     redirectUri: string,
     state: string
 ): string {
-    const clientKey = process.env.TIKTOK_CLIENT_KEY?.trim();
+    // Try both standard and NEXT_PUBLIC variants to be safe
+    const clientKey = (process.env.TIKTOK_CLIENT_KEY || process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY)?.trim();
+
+    // Detailed Debug Logging
+    console.log('[TikTok Auth Debug] Environment Check:');
+    console.log('- TIKTOK_CLIENT_KEY exists:', !!process.env.TIKTOK_CLIENT_KEY);
+    console.log('- NEXT_PUBLIC_TIKTOK_CLIENT_KEY exists:', !!process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY);
+    console.log('- Resolved Client Key:', clientKey ? `${clientKey.substring(0, 3)}...${clientKey.slice(-3)}` : 'MISSING');
+    console.log('- Redirect URI:', redirectUri);
+
     if (!clientKey) {
-        console.error('Missing TIKTOK_CLIENT_KEY');
+        console.error('[TikTok Auth Error] Missing TIKTOK_CLIENT_KEY or NEXT_PUBLIC_TIKTOK_CLIENT_KEY');
     }
 
     const params = new URLSearchParams({
@@ -76,11 +85,6 @@ export function getTikTokAuthUrl(
     });
 
     const authUrl = `${AUTH_URL}?${params.toString()}`;
-    console.log('[TikTok Auth] Generated URL with params:', {
-        client_key: clientKey,
-        redirect_uri: redirectUri,
-    });
-
     return authUrl;
 }
 
@@ -92,8 +96,12 @@ export async function exchangeCodeForTokens(
     redirectUri: string,
     codeVerifier?: string
 ): Promise<TikTokTokens> {
-    const clientKey = process.env.TIKTOK_CLIENT_KEY!;
-    const clientSecret = process.env.TIKTOK_CLIENT_SECRET!;
+    const clientKey = (process.env.TIKTOK_CLIENT_KEY || process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY)?.trim();
+    const clientSecret = (process.env.TIKTOK_CLIENT_SECRET || process.env.NEXT_PUBLIC_TIKTOK_CLIENT_SECRET)?.trim();
+
+    if (!clientKey || !clientSecret) {
+        throw new Error('TikTok credentials missing');
+    }
 
     const params = new URLSearchParams();
     params.append('client_key', clientKey);
@@ -136,8 +144,12 @@ export async function exchangeCodeForTokens(
  * Refresh an expired access token
  */
 export async function refreshAccessToken(refreshToken: string): Promise<TikTokTokens> {
-    const clientKey = process.env.TIKTOK_CLIENT_KEY!;
-    const clientSecret = process.env.TIKTOK_CLIENT_SECRET!;
+    const clientKey = (process.env.TIKTOK_CLIENT_KEY || process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY)?.trim();
+    const clientSecret = (process.env.TIKTOK_CLIENT_SECRET || process.env.NEXT_PUBLIC_TIKTOK_CLIENT_SECRET)?.trim();
+
+    if (!clientKey || !clientSecret) {
+        throw new Error('TikTok credentials missing');
+    }
 
     const params = new URLSearchParams();
     params.append('client_key', clientKey);
