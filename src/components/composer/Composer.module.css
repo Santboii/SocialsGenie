@@ -1431,6 +1431,14 @@
     color: white;
 }
 
+.previewAvatarTiktok {
+    background: #000000;
+    color: white;
+    /* TikTok branding accents (Cyan & Magenta) as subtle shadow/glow */
+    box-shadow: -2px -1px 0 rgba(37, 244, 238, 0.5), 2px 1px 0 rgba(254, 44, 85, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .previewName {
     font-weight: 600;
     font-size: var(--text-sm);

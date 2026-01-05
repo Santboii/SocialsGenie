@@ -26,6 +26,7 @@ const getAvatarClass = (pid: string): string => {
         case 'facebook': return styles.previewAvatarFacebook;
         case 'linkedin': return styles.previewAvatarLinkedin;
         case 'instagram': return styles.previewAvatarInstagram;
+        case 'tiktok': return styles.previewAvatarTiktok;
         case 'pinterest': return styles.previewAvatarPinterest;
         default: return '';
     }
